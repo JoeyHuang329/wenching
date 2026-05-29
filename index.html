@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文化特徵的選址影響力與缺失特徵歸因</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700;900&family=Noto+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
+    svg: { fontCache: 'global' }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.min.js" async></script>
+<style>
+  :root{
+    --cream:#f3ecdf;
+    --cream-deep:#eadfcb;
+    --paper:#faf5ea;
+    --paper-soft:#f6efe1;
+    --ink:#2f2620;
+    --ink-soft:#4a3d33;
+    --coffee:#5b4636;
+    --coffee-mid:#7a6147;
+    --caramel:#a07a4f;
+    --caramel-soft:#b89468;
+    --line:#d9c9ad;
+    --line-soft:#e4d7bf;
+    --shadow:rgba(70,52,34,0.10);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 18% 8%, rgba(176,146,101,0.10), transparent 42%),
+      radial-gradient(circle at 84% 92%, rgba(120,93,62,0.08), transparent 46%),
+      var(--cream);
+    color:var(--ink);
+    font-family:"Noto Serif TC","Noto Serif",serif;
+    font-weight:400;
+    line-height:1.95;
+    letter-spacing:0.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Layout ---------- */
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:0 28px;}
+  .layout{display:grid;grid-template-columns:232px 1fr;gap:54px;align-items:start;}
+  main{min-width:0;max-width:760px;}
+
+  /* ---------- Hero ---------- */
+  header.hero{
+    position:relative;z-index:1;text-align:center;
+    padding:96px 28px 70px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(250,245,234,0.0), rgba(250,245,234,0.55));
+  }
+  .hero .kicker{
+    font-size:.78rem;letter-spacing:.55em;text-transform:uppercase;
+    color:var(--caramel);margin-bottom:30px;font-family:"Noto Serif",serif;
+    padding-left:.55em;
+  }
+  .hero .rule{
+    width:58px;height:1px;background:var(--caramel);margin:0 auto 34px;position:relative;
+  }
+  .hero .rule::before,.hero .rule::after{
+    content:"";position:absolute;top:50%;width:5px;height:5px;border-radius:50%;
+    background:var(--caramel);transform:translateY(-50%);
+  }
+  .hero .rule::before{left:-16px;} .hero .rule::after{right:-16px;}
+  .hero h1{
+    font-size:clamp(2.0rem,4.6vw,3.25rem);font-weight:700;line-height:1.34;
+    margin:0 auto 18px;max-width:18ch;color:var(--coffee);letter-spacing:.02em;
+  }
+  .hero .sub{
+    font-size:clamp(1.02rem,1.6vw,1.22rem);color:var(--ink-soft);font-weight:400;
+    max-width:34ch;margin:0 auto 22px;line-height:1.7;
+  }
+  .hero .eng{
+    font-family:"Noto Serif",serif;font-style:italic;color:var(--coffee-mid);
+    font-size:.96rem;max-width:54ch;margin:0 auto 30px;line-height:1.6;opacity:.9;
+  }
+  .hero .meta{font-size:.92rem;color:var(--ink-soft);line-height:2;}
+  .hero .meta strong{color:var(--coffee);font-weight:600;}
+
+  /* ---------- TOC ---------- */
+  nav.toc{
+    position:sticky;top:0;align-self:start;
+    padding-top:64px;padding-bottom:40px;
+    font-size:.88rem;line-height:1.65;
+  }
+  nav.toc .toc-title{
+    font-size:.72rem;letter-spacing:.4em;text-transform:uppercase;
+    color:var(--caramel);margin-bottom:18px;font-family:"Noto Serif",serif;
+    border-bottom:1px solid var(--line-soft);padding-bottom:12px;
+  }
+  nav.toc a{
+    display:block;color:var(--ink-soft);text-decoration:none;padding:5px 0 5px 14px;
+    border-left:2px solid transparent;transition:all .25s ease;
+  }
+  nav.toc a:hover{color:var(--coffee);border-left-color:var(--caramel-soft);}
+  nav.toc a.active{color:var(--coffee);border-left-color:var(--caramel);font-weight:600;}
+  nav.toc a .num{color:var(--caramel);font-family:"Noto Serif",serif;margin-right:7px;font-size:.82rem;}
+
+  /* ---------- Sections ---------- */
+  section{padding:54px 0;border-bottom:1px solid var(--line-soft);}
+  section:last-of-type{border-bottom:none;}
+  .sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px;}
+  .sec-head .idx{
+    font-family:"Noto Serif",serif;font-size:1.0rem;color:var(--caramel);
+    border:1px solid var(--line);border-radius:50%;width:42px;height:42px;
+    display:flex;align-items:center;justify-content:center;flex:none;
+    background:var(--paper);box-shadow:0 2px 6px var(--shadow);
+  }
+  h2{
+    font-size:clamp(1.5rem,2.6vw,1.95rem);font-weight:700;color:var(--coffee);
+    margin:0;line-height:1.4;letter-spacing:.02em;
+  }
+  h3{
+    font-size:1.22rem;font-weight:600;color:var(--coffee-mid);
+    margin:42px 0 14px;line-height:1.5;
+    padding-left:14px;border-left:3px solid var(--caramel-soft);
+  }
+  h4{font-size:1.05rem;font-weight:600;color:var(--ink);margin:26px 0 10px;}
+  p{margin:0 0 18px;color:var(--ink-soft);}
+  main p strong, main li strong{color:var(--coffee);font-weight:600;}
+  em{font-style:normal;background:linear-gradient(transparent 62%, rgba(176,146,101,0.28) 0);padding:0 .1em;}
+  ul,ol{margin:0 0 20px;padding-left:1.4em;color:var(--ink-soft);}
+  li{margin-bottom:10px;}
+  ul.tight li{margin-bottom:6px;}
+
+  .lead{
+    font-size:1.12rem;line-height:1.95;color:var(--ink);
+    border-left:none;
+  }
+  .lead::first-letter{
+    float:left;font-size:3.4rem;line-height:.86;font-weight:700;
+    color:var(--caramel);margin:.06em .14em 0 0;font-family:"Noto Serif TC",serif;
+  }
+
+  /* ---------- Concept clarification box ---------- */
+  .clarify{
+    margin:30px 0;padding:26px 30px 22px;position:relative;
+    background:linear-gradient(180deg, var(--paper) 0%, var(--paper-soft) 100%);
+    border:1px solid var(--line);border-radius:3px;
+    box-shadow:0 6px 22px var(--shadow);
+  }
+  .clarify::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,var(--caramel),var(--coffee-mid));border-radius:3px 0 0 3px;
+  }
+  .clarify .tag{
+    display:inline-block;font-family:"Noto Serif",serif;font-size:.72rem;
+    letter-spacing:.32em;text-transform:uppercase;color:#fff;background:var(--coffee-mid);
+    padding:4px 14px;border-radius:2px;margin-bottom:14px;
+  }
+  .clarify h4{margin-top:0;color:var(--coffee);font-size:1.08rem;}
+  .clarify p:last-child{margin-bottom:0;}
+  .clarify .analogy{
+    font-style:italic;color:var(--coffee-mid);font-family:"Noto Serif TC","Noto Serif",serif;
+  }
+
+  /* ---------- Equation ---------- */
+  .eq{
+    margin:26px 0;padding:18px 22px;overflow-x:auto;
+    background:var(--paper-soft);border:1px solid var(--line-soft);
+    border-radius:3px;box-shadow:inset 0 1px 3px rgba(120,93,62,.05);
+  }
+
+  /* ---------- Callout / note ---------- */
+  .note{
+    margin:24px 0;padding:18px 24px;font-size:.96rem;
+    background:rgba(176,146,101,0.09);border:1px dashed var(--caramel-soft);
+    border-radius:3px;color:var(--ink-soft);
+  }
+  .note strong{color:var(--coffee);}
+
+  /* ---------- Tables ---------- */
+  .tbl-wrap{overflow-x:auto;margin:24px 0;border:1px solid var(--line);border-radius:4px;box-shadow:0 4px 16px var(--shadow);}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;background:var(--paper);min-width:520px;}
+  caption{caption-side:top;text-align:left;font-size:.86rem;color:var(--coffee-mid);padding:12px 16px 10px;font-style:italic;}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top;line-height:1.6;}
+  thead th{
+    background:var(--coffee);color:var(--cream);font-weight:500;letter-spacing:.04em;
+    border-bottom:none;position:sticky;top:0;
+  }
+  tbody tr:nth-child(even){background:var(--paper-soft);}
+  tbody tr:hover{background:rgba(176,146,101,0.10);}
+  td:first-child{font-weight:600;color:var(--coffee-mid);white-space:nowrap;}
+
+  /* ---------- Output sample (code-like) ---------- */
+  .sample{
+    margin:24px 0;padding:22px 26px;border-radius:4px;
+    background:#352a22;color:#efece7;
+    font-family:"Noto Serif",ui-monospace,monospace;font-size:.86rem;line-height:1.85;
+    box-shadow:0 8px 26px rgba(53,42,34,.35);white-space:pre-wrap;
+    border:1px solid #4a3b30;
+  }
+  .sample .hl{color:var(--caramel-soft);}
+  .sample .dim{color:#a99a83;}
+
+  /* ---------- Pull quote ---------- */
+  .pull{
+    margin:40px 0;padding:30px 36px;text-align:center;position:relative;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  }
+  .pull p{
+    font-size:1.28rem;line-height:1.75;color:var(--coffee);font-weight:500;
+    margin:0;max-width:30ch;margin-inline:auto;
+  }
+  .pull::before{
+    content:"\201C";position:absolute;top:2px;left:50%;transform:translateX(-50%);
+    font-size:3rem;color:var(--caramel-soft);font-family:"Noto Serif",serif;line-height:1;
+  }
+
+  /* ---------- Three values cards ---------- */
+  .values{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;margin:26px 0;}
+  .vcard{
+    padding:24px 22px;background:var(--paper);border:1px solid var(--line);
+    border-radius:4px;box-shadow:0 4px 16px var(--shadow);transition:transform .3s ease, box-shadow .3s ease;
+  }
+  .vcard:hover{transform:translateY(-4px);box-shadow:0 12px 30px var(--shadow);}
+  .vcard .vn{font-family:"Noto Serif",serif;font-size:1.6rem;color:var(--caramel);display:block;margin-bottom:8px;}
+  .vcard h4{margin:0 0 8px;color:var(--coffee);}
+  .vcard p{font-size:.92rem;margin:0;line-height:1.75;}
+
+  /* ---------- Footer ---------- */
+  footer{
+    position:relative;z-index:1;text-align:center;padding:60px 28px 70px;
+    border-top:1px solid var(--line);color:var(--coffee-mid);font-size:.9rem;
+    background:linear-gradient(180deg, rgba(250,245,234,0.0), rgba(234,223,203,0.5));
+  }
+  footer .rule{width:46px;height:1px;background:var(--caramel-soft);margin:0 auto 22px;}
+
+  /* ---------- Reveal animation ---------- */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s ease, transform .8s ease;}
+  .reveal.in{opacity:1;transform:none;}
+
+  /* ---------- Responsive ---------- */
+  @media(max-width:920px){
+    .layout{grid-template-columns:1fr;gap:0;}
+    nav.toc{display:none;}
+    main{max-width:100%;}
+  }
+  @media(max-width:560px){
+    .wrap{padding:0 18px;}
+    .hero{padding:64px 18px 48px;}
+    .lead::first-letter{font-size:2.8rem;}
+    .clarify,.eq,.note{padding-left:18px;padding-right:18px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="kicker">歷史人文 × 人工智慧</div>
+  <div class="rule"></div>
+  <h1>文化特徵的選址影響力<br>與缺失特徵歸因</h1>
+  <p class="sub">基於圖正則化梯度提升樹的文青產業可解釋選址推薦</p>
+  <p class="eng">Cultural Features and Their Site-Selection Influence: Interpretable Recommendation and Missing-Feature Attribution for Cultural-Creative Industries via Graph-Regularized Gradient Boosting</p>
+  <p class="meta">
+    團隊成員：黃旭寬&nbsp;·&nbsp;胡予馨&nbsp;·&nbsp;廖亭瑀&nbsp;·&nbsp;游采頻&nbsp;·&nbsp;彭郁媗<br>
+    指導教授：江穎慧老師（地政學系）
+  </p>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+  <nav class="toc" id="toc">
+    <div class="toc-title">目次</div>
+    <a href="#core"><span class="num">○</span>三個核心價值</a>
+    <a href="#revise"><span class="num">壹</span>本版修正概述</a>
+    <a href="#summary"><span class="num">貳</span>研究概要</a>
+    <a href="#motive"><span class="num">參</span>研究動機與問題</a>
+    <a href="#dataset"><span class="num">肆</span>資料集建構</a>
+    <a href="#method"><span class="num">伍</span>研究方法</a>
+    <a href="#experiment"><span class="num">陸</span>實驗與案例研究</a>
+    <a href="#feasible"><span class="num">柒</span>可行性與實作</a>
+    <a href="#risk"><span class="num">捌</span>風險與後續工作</a>
+    <a href="#taste"><span class="num">玖</span>研究品味</a>
+  </nav>
+
+  <main>
+
+  <!-- ============ CORE VALUES ============ -->
+  <section id="core" class="reveal">
+    <div class="sec-head"><span class="idx">○</span><h2>三個核心價值</h2></div>
+    <p class="lead">這份研究若以一句話收束，便是：把抽象的「歷史人文」化為可運算、可解釋、可操作的選址語言。整套系統圍繞三個彼此支撐的核心價值展開，後續所有章節皆可回溯到它們其中之一。</p>
+    <div class="values">
+      <div class="vcard">
+        <span class="vn">一</span>
+        <h4>文化記憶的可計算化</h4>
+        <p>把歷史故事、街區記憶這類質性概念，透過開放圖資與少量訪談，轉譯為可重現的數值特徵——為人文價值賦予可計算的座標。</p>
+      </div>
+      <div class="vcard">
+        <span class="vn">二</span>
+        <h4>多核心結構的圖正則化</h4>
+        <p>以「斷裂的引力圖」捕捉文青聚落短程聚集、同街區多核心並存的空間先驗，將多核心化約為圖的連通分量，迴避難解的排斥項。</p>
+      </div>
+      <div class="vcard">
+        <span class="vn">三</span>
+        <h4>缺失特徵的可解釋歸因</h4>
+        <p>不只回答「這個店址適合開什麼」，更回答「若要開書店，還缺哪些關鍵特徵」——讓推薦系統由黑盒升級為決策語言。</p>
+      </div>
+    </div>
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>為什麼「核心價值三」是這份研究的靈魂？</h4>
+      <p>一個只會說「不推薦」的系統，對想開店的人毫無用處；一個會說「不推薦，因為缺 A、B、C」的系統，才能成為店家與房東協商、政府與社區規劃的共通語言。對於一份本來就在追問「歷史人文如何影響選址」的研究而言，<em>可解釋性不是錦上添花，而是研究問題本身的內在要求</em>。因此本版本把第三個價值升格為研究主題的樞紐。</p>
+    </div>
+  </section>
+
+  <!-- ============ 壹 修正 ============ -->
+  <section id="revise" class="reveal">
+    <div class="sec-head"><span class="idx">壹</span><h2>本版修正概述</h2></div>
+    <p>相對於前一版「半監督圖正則化梯度提升樹的多核心文青聚落選址推薦」，本版本有三項實質修正，每一項都有其工程或學理上的必要性。</p>
+
+    <h3>修正一　將缺失特徵歸因升格為核心模組</h3>
+    <p>原版本僅做型別推薦並以 SHAP 作為輔證；新版本將「缺失特徵歸因」明確設計為一條獨立的推論管線，輸出可操作的歸因清單，使整套系統由分類器升級為決策輔助產品。</p>
+
+    <h3>修正二　徹底移除所有語意向量特徵</h3>
+    <p>原版本包含店面簡介語意向量、商品一覽語意向量與歷史故事的句向量嵌入。新版本將上述語意管線完全拔除，理由有二：其一，空店面在推論期沒有商品也沒有簡介，會造成嚴重的<strong>冷啟動失效</strong>；其二，繁重的爬蟲—文本資料庫—嵌入管線會吞噬學士專題的時程，且品質難以審計。新版本以靜態的 POI 類別與開放圖資特徵全面取代之。</p>
+
+    <h3>修正三　以三項數學補強堵住三大隱患</h3>
+    <p>原版本移除非凸排斥項雖在工程上極聰明，卻在半監督設定下留下<strong>類別塌陷</strong>、<strong>Logit 無界漂移</strong>、<strong>G 函數平穩性假設失效</strong>三大隱患。新版本以「先驗匹配正則化 + Logit L2 錨定 + KNN 局部自適應構圖」三招逐一封堵（詳見研究方法）。</p>
+  </section>
+
+  <!-- ============ 貳 概要 ============ -->
+  <section id="summary" class="reveal">
+    <div class="sec-head"><span class="idx">貳</span><h2>研究概要</h2></div>
+    <p class="lead">近年來，臺灣歷史街區的人文底蘊常被視為文青產業蓬勃發展的重要因素，然而如何將抽象的文化記憶量化為可運算的選址指標，仍是尚未被妥善解決的挑戰。</p>
+    <p>本研究將選址推薦任務形式化為一個帶有地理結構的<strong>多類別分類問題</strong>：給定一個（候選）店址的人文與空間特徵，模型輸出該店址上各文青店面型態的適配機率；對於低適配的型別—店址配對，系統再透過缺失特徵歸因模組指出「該店址缺乏哪些關鍵特徵」，使輸出由分類機率升格為可操作的歸因清單。</p>
+    <p>技術核心為<strong>半監督圖正則化梯度提升樹</strong>。實地走訪大稻埕街區後，團隊修正了最初的空間先驗：相似型別的文青店面在一定距離內傾向彼此聚集，且同一街區內同型別可形成多個聚落。據此，模型於損失函數中對「地理鄰近且 POI 上下文相似」的店面施加短程引力正則化，多核心結構由引力圖的連通分量自然湧現。半監督機制使少量高品質的訪談標註得以引導大量無標的開放圖資，控制人力成本。</p>
+    <p>實驗設計分為三層：推薦準確率的主實驗與消融；以空間區塊交叉驗證避免空間自相關洩漏；以大稻埕、艋舺為對照進行案例研究，輸出兩街區的「缺失特徵地圖」，直接回答「艋舺缺乏什麼，使選物店未能在此聚集」。</p>
+  </section>
+
+  <!-- ============ 參 動機 ============ -->
+  <section id="motive" class="reveal">
+    <div class="sec-head"><span class="idx">參</span><h2>研究動機與研究問題</h2></div>
+
+    <h3>研究動機</h3>
+    <p>團隊的根本問題是：<strong>歷史人文價值「真的」對文青產業的選址有特異影響嗎？</strong>這個問題不僅關乎學術命題，也關乎一項具體的產品判斷——未來在艋舺、中正、萬華等老城區，能否以「人文資產」作為文青商業活化的選址依據？</p>
+    <p>回答這個問題需要兩種能力。第一種是<strong>預測能力</strong>：能準確預測「這個店址適合什麼型別」。第二種是<strong>歸因能力</strong>：能準確指出「這個店址為什麼不適合 X 型別」。本研究的關鍵立場是——<em>歸因能力比預測能力更具產品價值</em>。為使「鎖定文青產業」的理由充分，研究刻意納入非文青店家作為對照：唯有比較文青與非文青，才能分離出歷史意義對文青產業的特有價值。</p>
+
+    <h3>研究問題（聚焦三問）</h3>
+    <p>本研究聚焦回答下列三個問題，依序為描述性、預測性與解釋性，彼此呼應。</p>
+    <div class="tbl-wrap">
+    <table>
+      <caption>三個聚焦的研究問題</caption>
+      <thead><tr><th>編號</th><th>性質</th><th>核心提問</th></tr></thead>
+      <tbody>
+        <tr><td>RQ1</td><td>描述性</td><td>與歷史人文相關的特徵（歷史建物密度、文化記憶深度、街區故事、老屋屬性）是否具顯著預測力？這份預測力是否為文青產業所<strong>特有</strong>？</td></tr>
+        <tr><td>RQ2</td><td>預測性</td><td>在小樣本半監督設定下，於多核心、空間異質的歷史街區中，能否準確預測候選店址（含尚未進駐的空店面）的適配型態？</td></tr>
+        <tr><td>RQ3</td><td>解釋性</td><td>對任一低適配的店址—型別配對，能否系統性指出「缺乏哪些關鍵特徵」？並在大稻埕與艋舺的對照中，量化指出「同樣是歷史老街，艋舺缺什麼」？</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- ============ 肆 資料集 ============ -->
+  <section id="dataset" class="reveal">
+    <div class="sec-head"><span class="idx">肆</span><h2>資料集建構</h2></div>
+
+    <h3>兩層特徵設計</h3>
+    <p>特徵依取得成本分為兩層，此分層直接決定半監督策略：</p>
+    <ul>
+      <li><strong>可計算特徵（cheap）</strong>：由開放地理資料、地圖 API 與少量結構化爬蟲自動產生，可對大量未受訪店面蒐集；新版本中此層為主力，且涵蓋有標集與無標集。</li>
+      <li><strong>實地特徵（expensive）</strong>：須經口述訪談取得，僅對核心示範區的小規模樣本蒐集；新版本中此層被刻意限縮，僅保留營運變數與少數結構化人文標籤。</li>
+    </ul>
+
+    <h3>特徵清單與建構方式</h3>
+    <p>本版本完全移除原店面簡介語意向量、商品一覽語意向量及歷史故事的句向量嵌入。所有特徵均為可審計、可重現、且<strong>可在空店面上計算</strong>的數值或順序型欄位。</p>
+    <div class="tbl-wrap">
+    <table>
+      <caption>特徵清單（已移除全部語意向量欄位）</caption>
+      <thead><tr><th>編號</th><th>特徵</th><th>層</th><th>建構方式（要點）</th></tr></thead>
+      <tbody>
+        <tr><td>1.1</td><td>歷史建物密度</td><td>計算</td><td>以核密度估計加權市定古蹟、歷史建築、廟宇；建議 150／300 公尺雙尺度</td></tr>
+        <tr><td>1.2</td><td>文化記憶提及計數</td><td>計算</td><td>候選店址半徑 200 公尺內，於公開歷史文章中被提及之次數；計次而非全文，迴避著作權</td></tr>
+        <tr><td>1.3</td><td>老屋密度</td><td>計算</td><td>Google Maps 半徑 200 公尺內含「老屋／復古／日式」等關鍵詞之評論數，以 TF-IDF 加權</td></tr>
+        <tr><td>1.4</td><td>歷史房屋屬性標籤</td><td>實地</td><td>訪談中店家重視之老屋特質（建築年代為主），編碼為順序型 1～10</td></tr>
+        <tr><td>2.1</td><td>最近捷運步行距離</td><td>計算</td><td>公尺；取對數反映遞減效應</td></tr>
+        <tr><td>2.2</td><td>公車站點密度</td><td>計算</td><td>核密度估計</td></tr>
+        <tr><td>2.3</td><td>距核心商業區中心距離</td><td>計算</td><td>公尺；中心點以商業 POI 之 KDE 峰值定義</td></tr>
+        <tr><td>2.4</td><td>微型聚落核心指標</td><td>計算</td><td>雙尺度 KDE 差（DoG）：短半徑 50m 密度減中程 200m 密度；正值暗示位於聚落核心</td></tr>
+        <tr><td>2.5</td><td>POI 上下文向量</td><td>計算</td><td>半徑 100 公尺內各類 POI 計數，正規化為機率向量（取代語意核）</td></tr>
+        <tr><td>3.1</td><td>商品價格中位數</td><td>實地</td><td>訪談取得；取對數穩健化；可缺</td></tr>
+        <tr><td>3.2</td><td>租金</td><td>實地</td><td>可拒答；樣本過少則移至 Future Work</td></tr>
+        <tr><td>3.3–3.5</td><td>店齡／坪數／營業時間</td><td>實地</td><td>營運變數；坪數取對數、營業時間三角編碼</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>「冷啟動」是什麼？為什麼移除語意向量能根治它？</h4>
+      <p>所謂<strong>冷啟動（cold start）</strong>，指的是模型在推論期遇到一個「資訊不完整」的新對象。本研究的應用情境正是如此：使用者想知道「<em>一間還沒有任何店家進駐的空老屋</em>，適合開什麼」。</p>
+      <p>問題在於——空店面沒有商品、也沒有店面簡介，因此原本依賴文本的語意向量在這種店址上<strong>根本無法計算</strong>。這造成一個致命的不對稱：預測一間已營業的店，和預測一間空屋，在特徵可用性上完全不同。</p>
+      <p>新版本的解法很乾脆：直接拔除所有文本特徵，改以<strong>POI 上下文向量</strong>——也就是「這個店址周圍 100 公尺內有哪些類型的店」。這個訊號描繪的是<em>環境</em>，而非店家自己，因此無論空屋與否都能算得出來。冷啟動於是被一勞永逸地化解。</p>
+    </div>
+
+    <h3>口述訪談計畫（精簡）</h3>
+    <p>訪談規模設定為至少 20 家，採 2×2 設計：產業（文青／非文青）× 人文意義（歷史文化／非歷史文化），每格至少各 2 家。訪談重心由原版的「全面建構語意特徵」轉為「故事性說明 + 關鍵順序型欄位」。訪談稿不進入機器學習管線；模型只吃結構化欄位，所有自由文本僅供研究報告中的敘事使用。</p>
+
+    <h3>有標／無標切分</h3>
+    <ul class="tight">
+      <li><strong>有標集 $\mathcal{L}$</strong>：核心示範區經訪談、具完整特徵與型別的店家，約 20–30 家。</li>
+      <li><strong>無標集 $\mathcal{U}$</strong>：其餘可由開放圖資蒐集的店家，預估 1000–3000 家；公開或可推得之型別作為弱標。</li>
+      <li><strong>型別粗化</strong>：粗化為 3–4 個上層群（閱讀／書寫、飲食／空間、物件／工藝、非文青），提升每類有效樣本數。</li>
+    </ul>
+  </section>
+
+  <!-- ============ 伍 研究方法 ============ -->
+  <section id="method" class="reveal">
+    <div class="sec-head"><span class="idx">伍</span><h2>研究方法</h2></div>
+    <p>本節為工程精簡版的半監督圖正則化梯度提升樹，並整合缺失特徵歸因模組。設計原則為：凡承載「多核心湧現」與「缺失特徵歸因」之學理一律保留；凡需 NLP 文本管線、繁重點過程包絡檢定、非凸排斥項調參者，一律以便宜而穩健的替代方案取代。</p>
+
+    <h3>5.1　問題形式化</h3>
+    <p>蒐集 $n$ 個店面樣本，每一樣本 $i$ 由特徵向量 $x_i\in\mathbb{R}^d$、平面地理座標 $z_i\in\mathbb{R}^2$（投影至 TWD97／EPSG:3826，單位公尺）刻畫；對 $i\in\mathcal{L}$ 另有型別標籤 $y_i\in\{1,\dots,K\}$。模型為分數函數 $F:\,x\mapsto\mathbb{R}^{K}$，經 softmax 映至型別機率 $p(x)=\mathrm{softmax}(F(x))$。推薦時取機率前 $r$ 大之型別。</p>
+    <div class="note"><strong>關鍵設計：</strong>$F$ 是<em>特徵的函數，而非座標的函數</em>。座標僅在訓練階段用來建構正則化圖；對新候選店址的外推完全經由特徵完成。這正是模型能在「沒見過的空店面」上做預測的根本原因。</div>
+
+    <h3>5.2　圖建構：KNN 加 POI 上下文閘控</h3>
+    <p>原版本以「歐氏距離核 × 句向量語意核」雙因子閘控引力，但語意核在空店面上不可計算。新版本以 POI 上下文向量取代語意核：任何候選店址，無論是否已有店家進駐，都可由其周圍 100 公尺內的 POI 類別計數建構一個正規化機率向量，描繪「這個店址被什麼樣的街區包圍」。</p>
+    <p>對任意兩節點 $i,j$，引力權重定義為：</p>
+    <div class="eq">
+    $$ w^{+}_{ij}=\mathbb{1}\big[(i,j)\in\mathcal{N}_K\big]\cdot\exp\!\Big(-\tfrac{d_{ij}^2}{2\sigma_{\mathrm{spa}}^2}\Big)\cdot\mathbb{1}\!\Big[\cos\big(\mathrm{POI}_i,\mathrm{POI}_j\big)\ge\theta\Big] $$
+    </div>
+    <p>其中 $\mathcal{N}_K$ 為對稱化的 $K$-近鄰集合，$d_{ij}=\lVert z_i-z_j\rVert_2$ 為歐氏距離，$\mathrm{POI}_i$ 為節點的 POI 上下文向量，$\theta$ 為 POI 餘弦門檻（建議 $0.7$）。三個因子分別代表：是否為近鄰、距離越近引力越強、以及兩店所在街區的「氣質」是否相似。</p>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>為什麼用 KNN，而不用原版的 G 函數？</h4>
+      <p>原版本以點過程理論的 <strong>G 函數</strong>估計一個全域的聚集尺度（例如「40 公尺」），再以此為半徑建圖。但 G 函數的數學前提是<em>空間平穩</em>——也就是假設整座城市的密度均勻。</p>
+      <p>真實的都市並非如此：大稻埕的紅磚老街巷弄，與外圍的四線道大馬路，空間質地天差地遠。用單一的 40 公尺一刀切，會在密巷裡連出過於稠密的圖，又在街區邊緣把圖切得太碎。</p>
+      <p class="analogy">改用 KNN 後，每個節點固定連到最近的 $K$ 個鄰居（建議 $K=10$）。就像「每個人都認識離自己最近的十位鄰居」——在人口稠密處這十人住得近，在郊區這十人住得遠，但每個人的社交圈大小一致。建圖密度因此<strong>自動跟隨局部空間密度</strong>，免去了平穩性假設。</p>
+    </div>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>「連通分量」如何自然地造出「多核心」？</h4>
+      <p>令 $L^{+}=D^{+}-W^{+}$ 為圖的<strong>拉普拉斯矩陣</strong>。對任一型別的分數場 $f$，正則化量 $f^{\top}L^{+}f=\sum_{ij}w^{+}_{ij}(f_i-f_j)^2$ 會懲罰「相鄰節點預測不一致」。</p>
+      <p>圖譜論有一條漂亮的定理：當我們把這個懲罰壓到最小，模型會讓預測在每一個<strong>連通分量</strong>（互相連得起來的一群節點）內趨於一致。而當引力因「距離太遠」或「街區氣質相異」被閘斷，圖就斷裂成數塊互不相連的島嶼。</p>
+      <p class="analogy">於是——<em>多個同型核心，就等於多個被閘斷分開的連通分量</em>。我們不需要任何「把不同店推開」的排斥力，多核心會像斷裂的群島一樣自然浮現。這條觀察，正是整份研究敢於移除難解排斥項的學理底氣。</p>
+    </div>
+
+    <h3>5.3　圖正則化梯度提升樹：Logit 平滑與半監督</h3>
+    <p>目標函數整合交叉熵與三項正則化：</p>
+    <div class="eq">
+    $$ \mathcal{J}(F)=\underbrace{\tfrac{1}{|\mathcal{L}|}\sum_{i\in\mathcal{L}}\ell_{\mathrm{CE}}(y_i,F_i)}_{\text{有標監督}}+\underbrace{\lambda\,\mathrm{tr}(F^{\top}L^{+}F)}_{\text{圖平滑}}+\underbrace{\gamma\,\lVert\bar{F}_{\mathcal{U}}-\log\pi\rVert_2^2}_{\text{先驗錨定}}+\underbrace{\eta\,\lVert F\rVert_F^2}_{\text{Logit 安全錨}} $$
+    </div>
+    <p>四項分別為：僅在有標集計算的交叉熵；在「有標 $\cup$ 無標」全體鄰邊上計算的圖平滑；防止類別塌陷的先驗錨定（$\bar{F}_{\mathcal{U}}$ 為無標集平均 logit，$\log\pi$ 為類別對數先驗）；以及防止漂移的 Logit 安全錨。</p>
+    <p>每一輪提升所需的對角梯度與 Hessian 為：</p>
+    <div class="eq">
+    $$ g_{ik}=\tfrac{\mathbb{1}[i\in\mathcal{L}]}{|\mathcal{L}|}\big(p_{ik}-\mathbb{1}[y_i=k]\big)+2\lambda(L^{+}F_{:,k})_i+\tfrac{2\gamma\,\mathbb{1}[i\in\mathcal{U}]}{|\mathcal{U}|}\big(\bar{F}_{\mathcal{U},k}-\log\pi_k\big)+2\eta F_{ik} $$
+    $$ h_{ik}=p_{ik}(1-p_{ik})+2\lambda D^{+}_{ii}+2\eta $$
+    </div>
+    <p>由於 $L^{+}$ 與 $D^{+}$ 是事前快取的常數稀疏矩陣，每輪僅需一次稀疏矩陣乘法 $L^{+}F$。Hessian 恆為非負，無需任何阻尼或截斷。</p>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>為什麼「把平滑施加在 Logit 上」是個聰明的妥協？</h4>
+      <p>梯度提升樹每一輪都要解一個二階近似的子問題，這個子問題需要 <strong>Hessian（二階導數）為半正定</strong>，最佳化才會穩定收斂。如果把平滑直接施加在「機率」上，Hessian 會變得複雜且可能不穩，必須額外調整阻尼參數，耗費大量心力。</p>
+      <p>本研究改把平滑施加在 <strong>logit（softmax 之前的分數）</strong>上。這時平滑項對 logit 的二階導數變成一個<em>常數對角矩陣</em> $2\lambda D^{+}$，永遠非負。它與交叉熵本身非負的 Hessian 相加，整體必然半正定。於是阻尼參數可以取極小甚至為零——這就是移除排斥項後保留下來最大的工程紅利。</p>
+    </div>
+
+    <h3>5.4　化解三大隱患的具體機制</h3>
+    <h4>隱患一　類別塌陷（Class Collapse）</h4>
+    <p>純拉普拉斯正則化只保證「同一連通分量內預測一致」，並不阻止不同分量塌陷為相同類別。在半監督下若 $|\mathcal{U}|\gg|\mathcal{L}|$，模型可能為了極小化圖項，把所有預測壓到樣本最多的那一類。</p>
+    <p><strong>修正：</strong>以先驗錨定項 $\gamma\lVert\bar{F}_{\mathcal{U}}-\log\pi\rVert_2^2$ 約束無標集的平均 logit，使其不脫離由有標集估計的類別先驗。直覺上，若所有預測都塌陷到「飲食／空間」群，平均 logit 會偏離 $\log\pi$，此項立刻提供拉回力。</p>
+
+    <h4>隱患二　Logit 無界漂移</h4>
+    <p>無標集沒有交叉熵約束，只有圖正則化的牽引；為了讓相鄰節點 logit 差異最小，無標節點的 logit 可能在迭代中無限制地整體平移，造成樹分裂時的數值溢位。</p>
+    <p><strong>修正：</strong>其一，以 Logit 安全錨 $\eta\lVert F\rVert_F^2$（$\eta$ 可極小如 $10^{-4}$）提供恆存的拉回力；其二，每輪結束後對每個樣本的 $K$ 維 logit 向量去除平均值。由於 softmax 對每樣本加一個常數不變，這個操作<em>不改變任何機率輸出</em>，卻能消除整體飄移。</p>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>用一個比喻理解這兩個隱患</h4>
+      <p class="analogy">想像全班同學在合照排隊。<strong>類別塌陷</strong>就像所有人都怕站錯，乾脆全部擠到人最多的那一排——先驗錨定像一位老師喊話：「各排人數要大致符合原本的比例」，把大家拉回各自的位置。</p>
+      <p class="analogy"><strong>Logit 漂移</strong>則像整支隊伍在不知不覺中一起往左飄，相對位置沒變、但已經飄出了相框——「去除平均值」就是每隔一陣子把整支隊伍平移回中央，相對站位完全不動，只是回到鏡頭裡。</p>
+    </div>
+
+    <h4>隱患三　G 函數平穩性失效</h4>
+    <p>已於 5.2 以 KNN 建圖取代固定半徑建圖徹底化解，此處不贅。</p>
+
+    <h3>5.5　缺失特徵歸因模組（核心新貢獻）</h3>
+    <p>本模組為「為什麼這個店址不適合 X 型別」提供量化、可解釋、可操作的答案。給定已訓練的模型 $F$、候選店址 $i^\star$、目標型別 $k^\star$，模組輸出一份依重要性排序的缺失特徵清單 $\mathcal{M}(i^\star,k^\star)$。</p>
+
+    <h4>主方法：全域重要度 × 局部缺失度</h4>
+    <p><strong>步驟一（離線）：</strong>對每個型別 $k$，計算每個特徵 $j$ 的全域重要度 $I_{j,k}$，可採置換重要度或 TreeSHAP 全域聚合 $I_{j,k}=\mathrm{mean}_i|\phi_{i,k,j}|$。</p>
+    <p><strong>步驟二（離線）：</strong>對「被模型自信地正確分類為 $k$」的樣本集 $\mathcal{S}_k$，計算每個特徵的均值 $\mu_{j,k}$ 與標準差 $\sigma_{j,k}$——這是「典型 $k$ 型店家」的特徵畫像。</p>
+    <p><strong>步驟三（線上）：</strong>對候選店址 $i^\star$ 與目標型別 $k^\star$，計算每個特徵的有號缺口與單側缺失：</p>
+    <div class="eq">
+    $$ \mathrm{Gap}_{j}(i^\star,k^\star)=\frac{\mu_{j,k^\star}-x_{i^\star,j}}{\sigma_{j,k^\star}},\qquad \mathrm{Def}_{j}=\max\!\big(0,\;\mathrm{Gap}_{j}\big) $$
+    </div>
+    <p>最終的缺失特徵分數為兩者相乘，取前 5 名即為缺失清單：</p>
+    <div class="eq">
+    $$ \mathrm{Missing}_{j}(i^\star,k^\star)=I_{j,k^\star}\cdot\mathrm{Def}_{j}(i^\star,k^\star) $$
+    </div>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>這條乘法公式為什麼能準確說出「缺什麼」？</h4>
+      <p>公式由兩個直覺相乘而成。$I_{j,k^\star}$ 回答「模型整體上有<em>多依賴</em>特徵 $j$ 來判斷 $k^\star$ 型」；$\mathrm{Def}_j$ 回答「這個店址在特徵 $j$ 上，比典型的 $k^\star$ 型店家<em>低了幾個標準差</em>」。</p>
+      <p>把兩者相乘，得到的就是「這個店址，在一個對 $k^\star$ 很重要的特徵上，缺到什麼程度」。一個特徵若<strong>既重要又缺</strong>，分數才會高——既不重要、或雖重要但不缺的特徵，都不會被列入。</p>
+      <p class="analogy">而 $\max(0,\cdot)$ 這個「單側」設計，是為了讓系統<em>只說「缺什麼」而不說「多什麼」</em>。畢竟對想開店的人來說，「你這裡歷史氣息太濃了」不是個有用的建議；「你這裡缺乏同型店家形成的聚落」才是。</p>
+    </div>
+
+    <h4>穩健性檢查：TreeSHAP 反向歸因</h4>
+    <p>對候選店址計算 TreeSHAP 值 $\phi_{i^\star,k^\star,j}$，找出將預測<em>推離</em> $k^\star$ 的特徵（$\phi<0$ 者），依 $-\phi$ 排序，與主方法比對。若兩方法在前 5 名上高度重疊（Jaccard $\ge 0.6$），則歸因結論具備穩健性。</p>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>什麼是 SHAP / TreeSHAP？</h4>
+      <p>SHAP 源自合作賽局理論的 <em>Shapley 值</em>，用來公平地分配「團隊總成果」給每位成員。把「一筆預測」看成總成果、把「每個特徵」看成成員，SHAP 值就回答了：<strong>每個特徵把這筆預測推高或推低了多少</strong>。</p>
+      <p>TreeSHAP 是針對樹模型的高效演算法，能在合理時間內精確算出這些值。本研究用它做兩件事：聚合成全域重要度 $I_{j,k}$；以及對單一店址做反向歸因，作為主方法的交叉驗證。</p>
+    </div>
+
+    <h4>輸出範例</h4>
+    <p>系統的實際輸出形如下例（虛構但符合預期形式），可直接交付給店家與房東閱讀：</p>
+    <div class="sample"><span class="dim">候選店址：</span>迪化街二段 XXX 號
+<span class="dim">目標型別：</span>閱讀／書寫
+<span class="dim">適配機率：</span>0.08<span class="dim">（Top-1 為「物件／工藝」，機率 0.51）</span>
+
+<span class="hl">缺失特徵清單（Missing 分數由高至低）</span>
+ 1. 歷史建物密度（300m KDE）         Missing=0.47  ( 缺 1.8σ )
+ 2. 微型聚落核心指標（DoG）           Missing=0.39  ( 缺 1.5σ )
+ 3. 文化記憶提及計數                  Missing=0.31  ( 缺 1.2σ )
+ 4. 最近捷運步行距離                  Missing=0.22  ( 比典型遠 200m )
+ 5. POI 上下文相似度                  Missing=0.18</div>
+    <p>此輸出對店家即具操作意義：缺乏歷史建物密度與微型聚落核心指標，表示「這個店址雖在歷史街區內，但所在區段的歷史建物分佈過於稀疏，且周邊並無同型店家形成聚落」。</p>
+
+    <h3>5.6　演算法流程（GR-GBM-XR）</h3>
+    <ol>
+      <li><strong>前處理（一次性）：</strong>計算所有特徵與 POI 上下文向量；以 cKDTree 建 $K$-近鄰圖、套用幾何核與 POI 閘控；組稀疏 $L^{+}$、$D^{+}$ 並以 Parquet 加 Snappy 快取。</li>
+      <li><strong>初始化：</strong>$F^{(0)}$ 設為類別對數頻率 $\log\pi$。</li>
+      <li><strong>訓練（共 $M$ 輪）：</strong>計算每 $(i,k)$ 的梯度與 Hessian；以自訂目標擬合本輪樹；更新 $F^{(m)}=F^{(m-1)}+\nu h_m$；對每樣本之 logit 去平均。</li>
+      <li><strong>離線歸因預備：</strong>對訓練集計算 TreeSHAP；對每型別計算 $I_{j,k}$、$\mu_{j,k}$、$\sigma_{j,k}$ 並快取。</li>
+      <li><strong>線上推論：</strong>對任意候選店址計算特徵與預測機率；對每個低適配型別呼叫歸因模組輸出缺失清單。</li>
+    </ol>
+  </section>
+
+  <!-- ============ 陸 實驗 ============ -->
+  <section id="experiment" class="reveal">
+    <div class="sec-head"><span class="idx">陸</span><h2>實驗與案例研究</h2></div>
+
+    <h3>評估指標</h3>
+    <ul>
+      <li><strong>推薦準確率：</strong>Top-1／Top-3 準確率、Macro-F1（控制類別不平衡）、MRR。</li>
+      <li><strong>空間結構檢驗：</strong>以模型 Top-1 預測重算同型最近鄰距離 CDF，與田野觀察比對；並報告引力圖連通分量數，與田野所數核心數對照。</li>
+      <li><strong>歸因品質：</strong>檢驗訪談中店家自陳的核心選址因素，是否落於模型全域重要度前 5 名；並檢驗對照店家的缺失清單是否與「為何此處不易做 X」相符。</li>
+      <li><strong>空間區塊交叉驗證：</strong>整塊街區留出，避免空間自相關造成的洩漏與評估高估。</li>
+    </ul>
+
+    <div class="clarify">
+      <span class="tag">觀念釐清</span>
+      <h4>為什麼一定要做「空間區塊」交叉驗證？</h4>
+      <p>一般的交叉驗證會把資料隨機切成訓練與測試。但空間資料有個特性：<strong>相鄰的點彼此高度相似</strong>（空間自相關）。若隨機切分，測試集裡的某家店，它的隔壁鄰居很可能在訓練集裡——模型等於「偷看了答案旁邊的提示」，測出來的準確率會虛高。</p>
+      <p class="analogy">空間區塊交叉驗證的做法是：<em>整條街整條街地留出</em>。要測大稻埕某街區時，就把整個街區從訓練資料中拿掉。這樣測出來的成績，才真正反映模型面對「全新街區」時的能力——這也正是 RQ2 想問的事。</p>
+    </div>
+
+    <h3>消融實驗</h3>
+    <div class="tbl-wrap">
+    <table>
+      <caption>消融維度與對應目的</caption>
+      <thead><tr><th>消融維度</th><th>對照</th><th>目的</th></tr></thead>
+      <tbody>
+        <tr><td>圖正則化強度</td><td>$\lambda=0$ vs. $\lambda>0$</td><td>圖平滑的淨增益</td></tr>
+        <tr><td>POI 上下文閘控</td><td>純 KNN vs. KNN × POI 餘弦</td><td>閘控對抑制錯連的效用</td></tr>
+        <tr><td>先驗錨定</td><td>$\gamma=0$ vs. $\gamma>0$</td><td>類別塌陷防護的效用</td></tr>
+        <tr><td>Logit 安全錨</td><td>$\eta=0$ vs. $\eta>0$</td><td>數值穩定的效用</td></tr>
+        <tr><td>歷史特徵</td><td>含 vs. 不含 1.1–1.4</td><td>量化歷史意義的邊際貢獻</td></tr>
+        <tr><td>分層比較</td><td>文青／非文青分層各做一次</td><td>檢驗歷史意義是否為文青產業特有（RQ1）</td></tr>
+        <tr><td>監督程度</td><td>僅 $\mathcal{L}$ vs. 半監督</td><td>半監督在小樣本下的效益</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>案例研究：大稻埕與艋舺的「缺失特徵地圖」</h3>
+    <p>本案例研究直接呼應研究動機中的對照命題：同樣是歷史老街，為何文青產業在大稻埕一帶蓬勃，而在艋舺青草巷一帶稀少？</p>
+    <ol>
+      <li>對艋舺一帶取若干候選店址（含現有店家與經估算的空店面），由模型預測三個型別的適配機率。</li>
+      <li>對每一個低適配的店址—型別配對，呼叫歸因模組輸出缺失清單。</li>
+      <li>將各候選店址的缺失特徵聚合：統計「該型別在艋舺哪些特徵被最頻繁列為缺失」。</li>
+      <li>對大稻埕同樣產出聚合，作為對照；比對兩地缺失分佈，回答 RQ3。</li>
+    </ol>
+    <div class="pull"><p>艋舺缺的不是歷史，而是「文青店家之間的彼此存在」。</p></div>
+    <p>預期此案例將顯示：艋舺一帶在「歷史建物密度」與「文化記憶提及計數」上並不缺，但在「微型聚落核心指標」與「POI 上下文相似度」上系統性缺乏。此一發現具強烈政策意涵：欲在艋舺活化文青產業，僅引入單一旗艦店無效；需要在小範圍內<strong>同時引入多家同型店家</strong>，使 DoG 為正、POI 上下文逐步轉為「文青化」，自舉式地建立微型聚落。</p>
+  </section>
+
+  <!-- ============ 柒 可行性 ============ -->
+  <section id="feasible" class="reveal">
+    <div class="sec-head"><span class="idx">柒</span><h2>可行性與工程實作</h2></div>
+
+    <h3>技術可行性</h3>
+    <p>圖正則化梯度提升的梯度與 Hessian 已封閉求解，於 XGBoost／LightGBM 自訂目標僅需在標準損失上加一次稀疏矩陣乘法、一個常數 logit 偏移與一個 L2 項，屬學士生能力範圍。歸因模組的主方法僅需基本 NumPy 統計；穩健性檢查直接呼叫 <code>shap.TreeExplainer</code>。</p>
+
+    <h3>資料與運算可行性</h3>
+    <p>可計算特徵皆由開放圖資與結構化爬蟲取得；文化記憶計數限縮為「店址周圍 200 公尺內計次」，工作量大幅下降。實地特徵限縮於 20–30 家訪談，一學期內可完成。歐氏距離搭配 KD-tree 使建圖為近線性時間；對 1000–3000 節點、$K=10$、$M\approx200$ 輪提升，整體訓練於常規筆電上預計數十秒至數分鐘完成。</p>
+
+    <h3>兩腳本拆分</h3>
+    <ul>
+      <li><strong>腳本一（空間特徵與圖建構）：</strong>讀座標 → 算空間特徵與 POI 上下文向量 → KNN 建圖 → 算 $L^{+}$、$D^{+}$ → 寫出 Parquet。</li>
+      <li><strong>腳本二（模型訓練與歸因）：</strong>讀 Parquet → 自訂目標 GBDT 訓練 → 算 SHAP 與歸因統計 → 寫出推薦與缺失清單。</li>
+    </ul>
+    <p>兩腳本各自獨立、可重複跑、可分別偵錯，是控制專題風險的關鍵設計。</p>
+  </section>
+
+  <!-- ============ 捌 風險 ============ -->
+  <section id="risk" class="reveal">
+    <div class="sec-head"><span class="idx">捌</span><h2>風險、限制與後續工作</h2></div>
+
+    <h3>已知限制</h3>
+    <ul>
+      <li><strong>歐氏距離的偽連邊：</strong>兩家店若 POI 上下文相似但中間有實體阻隔（如四線道無斑馬線），仍可能被錯連。POI 餘弦能切開大部分但非全部，本研究接受此罕見殘留誤差。</li>
+      <li><strong>小樣本訪談的代表性：</strong>20–30 家的有標集偏小，雖以半監督與型別粗化緩解，極端類別仍可能不穩，報告時以信賴區間明示。</li>
+      <li><strong>預測重要度不等於因果：</strong>若要主張「歷史底蘊提升租金」，需在混淆變數相近條件下做傾向分數配對。本研究主任務為預測性，因果宣稱宜限縮並以配對分析輔證。</li>
+    </ul>
+
+    <h3>後續工作（隨規模擴大可回補）</h3>
+    <div class="tbl-wrap">
+    <table>
+      <caption>為求工程可行而暫時犧牲的精度，及其回補路徑</caption>
+      <thead><tr><th>暫時犧牲</th><th>後果</th><th>回補</th></tr></thead>
+      <tbody>
+        <tr><td>歐氏距離（無實體連通閘）</td><td>隔街但 POI 相似的店家會被錯連</td><td>加回行人網路最短路徑</td></tr>
+        <tr><td>KNN（無聚集尺度學理估計）</td><td>無法刻畫型別間互斥的完整結構</td><td>加回雙變數 Cross-K 與蒙地卡羅包絡</td></tr>
+        <tr><td>移除排斥項</td><td>缺鄰里尺度的異型差異化先驗</td><td>加回特徵相異度閘控之中程排斥項</td></tr>
+        <tr><td>歸因以樣本均值為參照</td><td>「典型 $k$ 型店家」定義過於粗糙</td><td>改為局部加權回歸或型別內子聚類的多參照中心</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>產品化潛力</h3>
+    <p>以研究成果開發選址推薦網頁，輸入候選店址後輸出：各文青型態的適配機率與 Top-$r$ 推薦；以及對每個低適配型別的缺失特徵清單與可操作改善方向。可進一步延伸為文青店家與老屋租房的媒合平台，使「店家想開什麼／房東能提供什麼／街區缺什麼」三方資訊在同一地理介面上對齊。<strong>本研究的核心產品價值不在「推薦」，而在「為不推薦提供可操作的解釋」。</strong></p>
+  </section>
+
+  <!-- ============ 玖 品味 ============ -->
+  <section id="taste" class="reveal">
+    <div class="sec-head"><span class="idx">玖</span><h2>結語：本計畫的研究品味</h2></div>
+    <p class="lead">本計畫的研究品味不在堆砌複雜度，而在三件事。</p>
+    <p><strong>其一，有原則地移除排斥項。</strong>以圖譜論的連通分量定理為依據，知道什麼可以省、且能證明為何能省——這是研究品味的具體體現。</p>
+    <p><strong>其二，徹底拔除冷啟動下不可計算的語意特徵。</strong>承認 NLP 管線在學士專題範圍內難以審計，並以更穩健的 POI 上下文向量提供等效閘控——這是工程品味的具體體現。</p>
+    <p><strong>其三，將「不推薦」轉化為「具體缺什麼」。</strong>把推薦系統從黑盒升級為可解釋、可操作的決策輔助。對一個本身就在探討「歷史人文如何影響選址」的研究而言，可解釋性是研究問題本身的內在要求。</p>
+    <div class="pull"><p>不只說「有影響」，而是量化指出歷史人文之中的哪一個面向、缺到何種程度。</p></div>
+    <p>從研究動機回望，本計畫一開始就在問：「歷史人文對文青產業選址有特異的影響嗎？」缺失特徵歸因模組是這個問題最精確的回答形式。這份精確度，正是本計畫希望提供給文青產業、給歷史街區、給城市永續決策的，最具體的人文社會科學貢獻。</p>
+  </section>
+
+  </main>
+</div>
+</div>
+
+<footer>
+  <div class="rule"></div>
+  <p>文化特徵的選址影響力與缺失特徵歸因 ・ 基於圖正則化梯度提升樹的文青產業可解釋選址推薦<br>
+  指導教授 江穎慧（地政學系）・ 大稻埕 — 艋舺 案例研究</p>
+</footer>
+
+<script>
+  // Scroll-spy for TOC
+  const links = document.querySelectorAll('nav.toc a');
+  const sections = [...links].map(a => document.querySelector(a.getAttribute('href')));
+  const spy = () => {
+    let idx = 0;
+    const y = window.scrollY + 140;
+    sections.forEach((s, i) => { if (s && s.offsetTop <= y) idx = i; });
+    links.forEach((a, i) => a.classList.toggle('active', i === idx));
+  };
+  window.addEventListener('scroll', spy, {passive:true});
+  spy();
+
+  // Reveal on scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  }, {threshold:0.08, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
