@@ -1,0 +1,238 @@
+# 大稻埕文青選址研究：全域設定
+# 規則：所有隨機性一律用 seed；所有距離與面積在 crs_metric 計算。
+# 改動任何會影響預先登錄（docs/preregistration.md）的值，必須同時寫進 docs/deviations.md。
+
+# ---- 實作規劃 B 第 4 節的初始值（不要隨意改）----
+seed: 20261108
+crs_metric: "EPSG:3826"        # TWD97 / TM2 zone 121，單位公尺
+crs_storage: "EPSG:4326"       # 原始座標存 WGS84
+buffer_m: 300
+context_radius_m: 100
+kde_bandwidths_m: [150, 300]
+dedup_distance_m: 30
+min_block_size: 15
+places_max_requests: 900
+llm_runs: 3
+audit_n: 120
+dev_n: 20
+kappa_threshold: 0.6
+agent_max_pois: 100
+agent_max_steps: 8
+rq3_cases_target: 30
+
+# ---- 路徑 ----
+paths:
+  boundary_main: config/boundary_main.geojson
+  boundary_buffer: config/boundary_buffer.geojson
+  raw: data/raw
+  places_cache: data/places_cache
+  web_cache: data/web_cache
+  llm_cache: data/llm_cache
+  interim: data/interim
+  final: data/final
+  figures: outputs/figures
+  tables: outputs/tables
+  budget: config/budget.yaml
+
+# ---- 模型（名稱以官方文件為準）----
+models:
+  extraction: claude-haiku-5-5
+  fallback_extraction: claude-sonnet-5-5   # 閘門一第二次失敗時才換
+  agent: claude-sonnet-5-5
+  rq3_draft: claude-sonnet-5-5
+  gemini_crosscheck: gemini-3.6-flash   # 以 AI Studio 顯示的免費方案模型名稱為準，請人工確認後改寫
+  extraction_max_tokens: 1200
+
+# ---- T02 Places 普查 ----
+places:
+  endpoint: "https://places.googleapis.com/v1/places:searchNearby"
+  initial_cell_m: 200
+  min_cell_m: 25
+  max_result_count: 20
+  rank_preference: DISTANCE
+  language_code: zh-TW
+  region_code: TW
+  # 規則 5：每個請求都帶欄位遮罩；不要求 reviews、editorialSummary 等 Atmosphere 欄位
+  field_mask:
+    - places.id
+    - places.displayName
+    - places.location
+    - places.types
+    - places.primaryType
+    - places.businessStatus
+    - places.formattedAddress
+    - places.regularOpeningHours
+    - places.userRatingCount
+    - places.rating
+    - places.priceLevel
+    - places.websiteUri
+  forbidden_fields: [reviews, editorialSummary, generativeSummary, reviewSummary, places.reviews, places.editorialSummary]
+  # 只查和「主範圍＋緩衝區」多邊形相交的格子（外框的角落常在河上或範圍外，省請求）
+  skip_cells_outside_polygon: true
+
+# ---- T03 OSM 與去重 ----
+osm:
+  overpass_endpoint: "https://overpass-api.de/api/interpreter"
+  # 以「主範圍＋緩衝區」外框再外擴 200 公尺下載，道路切街區時邊界才完整
+  download_margin_m: 200
+  commercial_keys: [shop, amenity, craft, tourism, office]   # shop/craft/office 任何值都算；amenity/tourism 只留下列值
+  # amenity 只留商業類
+  commercial_amenity: [cafe, restaurant, fast_food, bar, pub, ice_cream, food_court, biergarten, pharmacy, bank, marketplace, arts_centre, theatre, cinema]
+  commercial_tourism: [gallery, museum, hotel, hostel, guest_house]
+dedup:
+  name_sim_high: 85      # rapidfuzz token_set_ratio ≥ 此值 且 距離 ≤ dedup_distance_m → 自動合併
+  name_sim_low: 60       # 介於 low 與 high 之間 → 模稜兩可，輸出清單給人看，不自動合併
+  strip_suffixes: ["分店", "本店", "總店", "門市", "店"]
+
+# 非商業類別（T03 濾掉；Places primaryType / types 與 OSM 值都比對）
+noncommercial_types:
+  - school
+  - primary_school
+  - secondary_school
+  - university
+  - park
+  - parking
+  - parking_lot
+  - parking_garage
+  - bus_stop
+  - bus_station
+  - transit_station
+  - subway_station
+  - train_station
+  - light_rail_station
+  - place_of_worship
+  - church
+  - hindu_temple
+  - buddhist_temple
+  - mosque
+  - synagogue
+  - local_government_office
+  - city_hall
+  - police
+  - fire_station
+  - post_office
+  - library
+  - hospital
+  - doctor
+  - dentist
+  - atm
+  - public_bathroom
+  - playground
+  - apartment_building
+  - apartment_complex
+  - housing_complex
+  - route
+  - street_address
+  - premise
+  - plus_code
+  - neighborhood
+  - political
+  - locality
+  - sublocality
+# 只有 point_of_interest／establishment 這種泛用類別的地點不濾掉，但標記 generic_type=True 供人檢查。
+# 注意：廟宇本身不是分析單位（排除），但百年廟宇會進「歷史環境密度」（見 heritage.include_temples）
+
+# ---- T04 結構化特徵 ----
+streets:
+  # 主街：on_main_street 判定。名稱比對 OSM 道路的 name 欄位（正規化後）
+  main_street_names: ["迪化街一段", "迪化街二段"]
+  main_street_buffer_m: 15     # POI 與主街中心線距離 ≤ 此值視為面向主街（需彭郁媗以地圖檢查）
+  # 切街區時排除的 OSM highway 類別（小巷不切）
+  exclude_highway: [service, footway, path, steps, pedestrian, cycleway, track, corridor, construction, proposed, platform, elevator]
+  # 若 OSM 沒有 highway 等級可用，改以這些名稱一定要切（大路）
+heritage:
+  match_distance_m: 15
+  include_temples: true
+  # 百年廟宇清單：需人工確認（游采頻／彭郁媗）。座標待補時留空，程式會跳過
+  temples_csv: data/raw/heritage/temples.csv
+landmarks:
+  # 霞海城隍廟（迪化街一段 61 號）。座標為近似值，需人工核對後把 verified 改成 true
+  xiahai_temple: {lon: 121.50990, lat: 25.05588, verified: false}
+transit:
+  mrt_stations_csv: data/raw/transit/mrt_stations.csv
+  mrt_routes_geojson: data/raw/transit/mrt_routes_twd97.json
+  bus_stops_shp: data/raw/transit/busstop.shp
+  bus_shapes_json: data/raw/transit/bus_shapes_GetBusShape.json   # 較新（utime 2025-12），TstBusShape 為舊版
+  bus_density_radius_m: 300       # bus_density = 半徑內站牌數 / 面積（站/平方公里）
+  bus_route_radius_m: 150         # 補充特徵：半徑內通過的不同路線數（未列入預先登錄）
+  clip_margin_m: 1500             # 交通資料裁切範圍：主範圍外擴此距離（需包含最近的捷運站）
+hours:
+  close_threshold: "19:00"        # H1：平日 19:00 前關門
+  weekdays: [1, 2, 3, 4, 5]        # Places 的 day：0=週日，1=週一 … 6=週六
+
+# ---- T05 官網抓取 ----
+scrape:
+  user_agent: "DadaochengAcademicResearchBot/1.0 (non-commercial university research)"
+  timeout_s: 10
+  per_domain_interval_s: 1.0
+  min_homepage_chars: 300          # 首頁正文短於此 → 嘗試「關於」頁一次
+  max_tokens: 1500
+  about_patterns: ["about", "story", "our-story", "brand", "關於", "品牌故事", "我們的故事", "緣起", "理念"]
+  social_domains:
+    - facebook.com
+    - fb.com
+    - fb.me
+    - instagram.com
+    - threads.net
+    - threads.com
+    - line.me
+    - lin.ee
+    - linktr.ee
+    - x.com
+    - twitter.com
+    - tiktok.com
+    - youtube.com
+    - pinkoi.com        # 平台頁面，非店家自我敘事
+    - shopee.tw
+    - dcard.tw
+  name_only_alert_ratio: 0.6
+
+# ---- T06 prompt 開發 ----
+extraction:
+  prompt_file: prompts/extraction_v1.md
+  dev_sample_file: data/final/dev_sample.csv
+  evidence_valid_target: 0.90
+  # 文青白名單業態（提案書 6.4）；wenqing_group 由程式推導（CLAUDE.md 規則 11）
+
+# ---- 業態大類的「粗分類」：由 Places 類別推得（T04 的 poi_context_* 與 T07 分層抽樣用）----
+# 正式的 category 由 LLM 抽取決定（T08）；這裡只是結構化的先驗，不能取代 LLM 欄位。
+# 依序比對：primaryType 先比，找不到再看 types；都沒有 → 其他
+places_category_map:
+  熱食餐飲: [restaurant, chinese_restaurant, taiwanese_restaurant, japanese_restaurant, korean_restaurant, ramen_restaurant,
+            noodle_shop, fast_food_restaurant, meal_takeaway, meal_delivery, bar, pub, wine_bar, bar_and_grill, food_court,
+            hot_pot_restaurant, seafood_restaurant, vegetarian_restaurant, vegan_restaurant, barbecue_restaurant,
+            steak_house, sushi_restaurant, thai_restaurant, vietnamese_restaurant, italian_restaurant, american_restaurant,
+            indian_restaurant, buffet_restaurant, brunch_restaurant, breakfast_restaurant, diner, food]
+  咖啡茶飲甜點: [cafe, coffee_shop, tea_house, bakery, dessert_shop, dessert_restaurant, ice_cream_shop, juice_shop,
+              bubble_tea_store, confectionery, candy_store, chocolate_shop, donut_shop, cake_shop, cafeteria, acai_shop]
+  傳統業種: [herbal_medicine_store, chinese_medicine_store, pharmacy, drugstore, wholesaler, grocery_store, food_store,
+            market, butcher_shop, asian_grocery_store, tea_store, fabric_store, textile_store]
+  選物與文創零售: [gift_shop, home_goods_store, furniture_store, jewelry_store, store, crafts_store, stationery_store,
+              souvenir_store, art_supply_store, antique_store, home_improvement_store]
+  文化空間: [book_store, art_gallery, museum, performing_arts_theater, cultural_center, library, event_venue,
+            concert_hall, cultural_landmark, historical_landmark, art_studio]
+  一般零售與品牌: [clothing_store, shoe_store, convenience_store, supermarket, cosmetics_store, beauty_salon, hair_salon,
+              electronics_store, cell_phone_store, sporting_goods_store, department_store, shopping_mall, optician,
+              sportswear_store, discount_store, liquor_store, bicycle_store]
+  # 其他：lodging、hotel、bank、real_estate_agency、travel_agency、service 類等
+
+# 「可能文青」層（T07 分層抽樣用的粗估）：Places 類別命中下列任一即可能
+likely_wenqing_types: [cafe, coffee_shop, tea_house, book_store, art_gallery, gift_shop, crafts_store, stationery_store,
+                       art_studio, antique_store, cultural_center, event_venue, dessert_shop, home_goods_store]
+
+# 傳統業種細分（H3）。依名稱關鍵字，先比中藥再比南北貨。【待確認：需在 prereg 前定稿】
+traditional_subtypes:
+  中藥: [藥行, 參藥, 蔘藥, 中藥, 漢藥, 藥材, 草藥, 青草]
+  南北貨: [南北貨, 乾貨, 海味, 海產乾貨, 食品行, 魚翅, 干貝, 香菇, 臘味]
+  布業: [布行, 布莊, 布業, 綢緞, 紡織]
+  茶行: [茶行, 茶莊, 茶葉]
+
+price_level_ordinal:
+  PRICE_LEVEL_FREE: 0
+  PRICE_LEVEL_INEXPENSIVE: 1
+  PRICE_LEVEL_MODERATE: 2
+  PRICE_LEVEL_EXPENSIVE: 3
+  PRICE_LEVEL_VERY_EXPENSIVE: 4
+
+# 民生西路（H3「民生西路以北」判定用的 OSM 道路名稱）
+minsheng_road_name: 民生西路

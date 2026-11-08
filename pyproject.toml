@@ -1,0 +1,39 @@
+[project]
+name = "dadaocheng"
+version = "0.1.0"
+description = "訪談驅動的假說生成與 LLM 資料建構：大稻埕文青產業選址研究"
+requires-python = ">=3.11"
+dependencies = [
+  "pyyaml>=6",
+  "python-dotenv>=1",
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "pyarrow>=14",
+  "geopandas>=0.14",
+  "shapely>=2.0",
+  "pyproj>=3.6",
+  "pyshp>=2.3",
+  "rapidfuzz>=3",
+  "httpx>=0.27",
+  "trafilatura>=1.8",
+  "pydantic>=2.5",
+  "anthropic>=0.70",
+  "google-genai>=1.0",
+  "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+later = ["statsmodels", "scipy", "scikit-learn", "lightgbm", "ppi-python"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

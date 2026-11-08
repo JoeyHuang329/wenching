@@ -1,0 +1,31 @@
+# 金鑰（CLAUDE.md 規則 9）
+.env
+.env.*
+!.env.example
+
+# 所有資料（實作規劃 B 第 2 節：整個 data/ 不 commit；Places 內容依條款不得公開）
+data/
+
+# 訪談整稿絕不進程式庫（CLAUDE.md 規則 1）
+*整稿*
+*訪談*
+*interview*
+*transcript*
+
+# 輸出中可能含 Places 內容的表格，預設不 commit（圖可以）
+outputs/tables/
+outputs/rq3_cases/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# 系統
+.DS_Store
+Thumbs.db
+desktop.ini
