@@ -16,6 +16,9 @@ data/
 outputs/tables/
 outputs/rq3_cases/
 
+# Excel workbooks may contain personal information
+*.xlsx
+
 # Python
 __pycache__/
 *.py[cod]
@@ -29,3 +32,9 @@ venv/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 個人開發工具
+find_symbol.py
+generate_tree_md.py
+generate_tree.py
+project_paths.md

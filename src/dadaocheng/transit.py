@@ -246,7 +246,7 @@ def main() -> None:
     if not config.path("boundary_buffer").exists():
         geo.make_buffer_geojson()
     if geo.boundary_is_draft():
-        print("⚠ 注意：主範圍邊界仍是 DRAFT（Claude 粗估）。正式分析前請由彭郁媗重畫。")
+        print("⚠ 注意：主範圍邊界仍是 DRAFT（Claude 粗估）。正式分析前請由隊友 A 重畫。")
     counts = build_transit_layers()
     for k, v in counts.items():
         print(f"{k}: {v} 筆")

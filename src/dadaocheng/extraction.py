@@ -114,18 +114,22 @@ def prompt_version() -> str:
 
 
 def user_content(name: str, places_types: str | None, text_status: str, text: str | None) -> str:
-    """POI 的內容（放在 prompt 最後）。訪談文字絕不會出現在這裡（規則 1）：來源只有 Places 名稱／類別與官網正文。"""
-    types = places_types
-    if isinstance(types, str) and types.startswith("["):
-        try:
-            types = "、".join(json.loads(types))
-        except json.JSONDecodeError:
-            pass
-    parts = [f"店名：{name}", f"Google 類別：{types or '（無）'}", f"文本狀態：{text_status}"]
-    if text_status == "name_only" or not text:
+    """POI 的內容（放在 prompt 最後）。訪談文字絕不會出現在這裡（規則 1）：來源只有 Places 名稱／類別與官網正文。
+
+    每個參數都可能是缺值（pandas 的 NaN），所以一律先過 as_text。
+    """
+    from .names import as_text
+
+    from .t04_features import parse_types
+
+    types = "、".join(parse_types(places_types))
+    text = as_text(text)
+    parts = [f"店名：{as_text(name)}", f"Google 類別：{types or '（無）'}",
+             f"文本狀態：{as_text(text_status) or 'name_only'}"]
+    if as_text(text_status) == "name_only" or not text:
         parts.append("店家文本：（無）")
     else:
-        parts.append("店家文本：\n<text>\n" + text.strip() + "\n</text>")
+        parts.append("店家文本：\n<text>\n" + text + "\n</text>")
     return "\n".join(parts)
 
 

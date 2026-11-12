@@ -126,13 +126,28 @@ def test_full_pipeline_with_fakes(tmp_root, monkeypatch, capsys):
 
     # ---- T04 ----
     hdir = tmp_root / "data" / "raw" / "heritage"; hdir.mkdir(parents=True)
-    au = merged[merged.in_main].iloc[0]
-    pd.DataFrame([{"heritage_id": "H1", "name": "測試歷建", "type": "歷史建築", "address": "", "lon": au.lon, "lat": au.lat}]) \
-        .to_csv(hdir / "heritage_list.csv", index=False, encoding="utf-8-sig")
+    inmain = merged[merged.in_main]
+    # 歷史建築與古蹟都要有，否則 T04 的文資驗證會擋下來（提案書 6.5 需要兩類）
+    rows = []
+    for k in range(12):
+        r = inmain.iloc[k]
+        rows.append({"heritage_id": f"H{k:02d}", "name": f"測試文資{k}",
+                     "type": "古蹟" if k % 4 == 0 else "歷史建築",
+                     "address": f"臺北市大同區迪化街1段{k}號", "lon": r.lon, "lat": r.lat})
+    pd.DataFrame(rows).to_csv(hdir / "heritage_list.csv", index=False, encoding="utf-8-sig")
+    (hdir / "temples.csv").write_text(
+        "name,lon,lat,founded_year,source\n"
+        f"測試百年廟,{inmain.iloc[20].lon},{inmain.iloc[20].lat},1880,test\n"
+        f"測試新廟,{inmain.iloc[21].lon},{inmain.iloc[21].lat},1990,test\n", encoding="utf-8")
+    au = inmain.iloc[0]
     t04_features.main([])
     pm = pd.read_parquet(tmp_root / "data" / "final" / "poi_master.parquet")
     assert pm["analysis_unit"].sum() > 50
     assert pm.loc[pm.poi_id == au.poi_id, "in_heritage"].item()
+    assert (pm["heritage_kde_300"] > 0).any()
+    # 未滿百年的廟不計入密度
+    chk = pd.read_csv(tmp_root / "outputs" / "tables" / "t04_heritage_validation.csv")
+    assert (chk["level"] == "stop").sum() == 0
     for fig in ["check_heritage.png", "check_blocks.png", "check_main_street.png"]:
         assert (tmp_root / "outputs" / "figures" / fig).exists()
 
@@ -182,3 +197,23 @@ def test_full_pipeline_with_fakes(tmp_root, monkeypatch, capsys):
     reviews = list((tmp_root / "outputs" / "tables").glob("t06_dev_review_*.md"))
     assert reviews and "選物與工藝" in reviews[0].read_text(encoding="utf-8")
     assert 0 < ledger.spent("anthropic") < 5
+
+    # ---- T07：抽查樣本（必須排除開發樣本）----
+    from dadaocheng import report_rq1, t07_audit_sample
+
+    t07_audit_sample.main(["--draw"])
+    sample = pd.read_csv(tmp_root / "data" / "final" / "audit_sample.csv", dtype={"poi_id": str})
+    dev_ids = set(pd.read_csv(tmp_root / "data" / "final" / "dev_sample.csv", dtype=str)["poi_id"])
+    assert not (set(sample["poi_id"]) & dev_ids)
+    assert len(sorted((tmp_root / "data" / "final").glob("audit_form_*.csv"))) == 4
+    t07_audit_sample.main(["--check"])
+    assert "✔ 檢查通過" in capsys.readouterr().out
+
+    # ---- 只需結構化資料的三條假說 ----
+    report_rq1.main(["--run-all"])
+    holm = pd.read_csv(tmp_root / "outputs" / "tables" / "rq1_holm.csv")
+    assert {"H1", "H3", "H5"} <= set(holm["假說"])
+    md = (tmp_root / "outputs" / "tables" / "rq1_summary.md").read_text(encoding="utf-8")
+    assert "尚未完成：H6" in md
+    for fig in ["h1_close_time_hist.png", "h1_proportions.png", "h3_zoning_map.png", "h5_heritage_hotfood.png"]:
+        assert (tmp_root / "outputs" / "figures" / fig).exists()

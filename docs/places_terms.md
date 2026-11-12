@@ -1,6 +1,6 @@
-# 我們可以存什麼：Google Places 條款整理（由廖亭瑀撰寫）
+# 我們可以存什麼：Google Places 條款整理（由隊友 D 撰寫）
 
-> 實作規劃 A 指派廖亭瑀今天完成。CLAUDE.md 規則 5：「長期只保存 place_id；其他內容依本文件的結論處理。」
+> 實作規劃 A 指派隊友 D 今天完成。CLAUDE.md 規則 5：「長期只保存 place_id；其他內容依本文件的結論處理。」
 > 下面是需要回答的問題，請查 Google Maps Platform 服務條款與 Places API 政策頁的**原文**，每題附連結與查證日期。
 
 ## 需要回答的問題

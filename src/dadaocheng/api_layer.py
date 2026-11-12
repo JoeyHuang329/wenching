@@ -67,11 +67,28 @@ class Ledger:
             self.state.setdefault(k, {})
 
     def _save(self) -> None:
-        # 原子寫入：先寫暫存檔再取代，避免中途當掉留下壞檔
+        # 原子寫入：先寫暫存檔再取代，避免中途當掉留下壞檔。
+        # Windows 上，budget.yaml 若正被編輯器（VS Code 預覽）、防毒、OneDrive 或索引服務短暫開啟，
+        # os.replace 會丟出 PermissionError [WinError 5]。這時退避重試；仍失敗就改為直接覆寫。
         fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".budget_", suffix=".yaml")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             yaml.safe_dump(self.state, f, allow_unicode=True, sort_keys=False)
-        os.replace(tmp, self.path)
+        delay = 0.05
+        for _ in range(12):  # 合計約 6 秒
+            try:
+                os.replace(tmp, self.path)
+                return
+            except PermissionError:
+                time.sleep(delay)
+                delay = min(delay * 2, 1.0)
+        try:
+            with open(self.path, "w", encoding="utf-8") as f:
+                yaml.safe_dump(self.state, f, allow_unicode=True, sort_keys=False)
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
     # -- 查詢 --
     def limit(self, provider: str) -> float:
@@ -162,6 +179,16 @@ class ApiCaller:
         return self.cache_dir / key[:2] / f"{key}.json"
 
     def cached(self, request: dict, extra: dict | None = None) -> dict | None:
+        """回傳快取中的「回應」，沒有就回傳 None。
+
+        刻意與 call() 回傳同樣的東西（response，而不是整筆快取紀錄），
+        呼叫端才能把「先查快取、再決定要不要送出」寫成同一套流程。
+        整筆紀錄（含花費與時間）請用 cached_record()。
+        """
+        rec = self.cached_record(request, extra)
+        return rec["response"] if rec else None
+
+    def cached_record(self, request: dict, extra: dict | None = None) -> dict | None:
         p = self._cache_path(request_key(self.provider, request, extra))
         if p.exists():
             with open(p, encoding="utf-8") as f:
@@ -210,6 +237,28 @@ class ApiCaller:
         os.replace(tmp, path)
         self.ledger.record(self.provider, cost)
         return response
+
+
+    # -- 批次介面用 --
+    def store(self, request: dict, response: dict, cost_twd: float, extra: dict | None = None) -> None:
+        """把「不是經由 call() 送出」的結果寫進同一個快取並記帳（Message Batches 用）。
+
+        批次是先送出、幾小時後才取回，無法用 call() 的同步流程；但快取與記帳必須共用，
+        否則補跑時會重複付費。
+        """
+        key = request_key(self.provider, request, extra)
+        path = self._cache_path(key)
+        if path.exists():
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        record = {"key": key, "provider": self.provider, "extra": extra or {}, "request": request,
+                  "response": response, "cost_twd": cost_twd,
+                  "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
+        tmp = path.with_suffix(".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(record, f, ensure_ascii=False)
+        os.replace(tmp, path)
+        self.ledger.record(self.provider, cost_twd)
 
 
 def default_ledger(root: Path | None = None) -> Ledger:

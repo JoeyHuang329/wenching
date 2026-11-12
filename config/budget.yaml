@@ -1,52 +1,40 @@
-# 預算守門員（CLAUDE.md 規則 4）
-# - limits_twd：各 API 的硬上限（新台幣）。超過就丟出 BudgetExceeded。
-# - spent_twd / requests：由程式累計，請不要手動改，除非要校正（校正時寫進 docs/deviations.md）。
-# - 單一步驟預估 > step_approval_twd，或任一帳戶累計 ≥ approval_ratio × 上限 → 丟出 NeedsHumanApproval（停下來問人）。
-# - 單價來源：Claude 官方定價頁（2026-11-08 查證：Haiku 5.5 為每百萬 token 輸入 0.10、輸出 0.50、快取讀取 0.01 美元，
-#   批次介面五折；Sonnet 5.5 為 2 / 10 美元）。Places 單價請以 Cloud Console 的 SKU 為準。
-
 fx_usd_twd: 32
 step_approval_twd: 200
 approval_ratio: 0.7
-
 limits_twd:
   anthropic: 1000
   google_places: 1500
   gemini: 0
-
 pricing:
   anthropic:
     claude-haiku-5-5:
-      input_per_mtok: 0.10
-      output_per_mtok: 0.50
+      input_per_mtok: 0.1
+      output_per_mtok: 0.5
       cache_read_per_mtok: 0.01
-      cache_write_per_mtok: 0.125   # 以 1.25 倍輸入價估計；請以官方定價頁核對
+      cache_write_per_mtok: 0.125
       batch_discount: 0.5
-      long_prompt_threshold_tokens: 100000   # 超過 10 萬 token 的 prompt 單價變五倍（本專案不會碰到）
+      long_prompt_threshold_tokens: 100000
     claude-sonnet-5-5:
       input_per_mtok: 2.0
       output_per_mtok: 10.0
-      cache_read_per_mtok: 0.10
+      cache_read_per_mtok: 0.1
       cache_write_per_mtok: 2.5
       batch_discount: 0.5
   google_places:
-    # Nearby Search (New) Enterprise SKU：每月前 1,000 次免費。超過後的單價請人工從 Console 填入（美元／千次）。
     nearby_search_enterprise:
       free_requests_per_month: 1000
-      usd_per_1000_after_free: 35.0   # 保守估計值；請以 Console 顯示的 SKU 單價修正
+      usd_per_1000_after_free: 35.0
   gemini:
-    free_tier: true                   # 免費方案：花費 0，但仍計請求數
-
-# ---- 以下由程式寫入 ----
+    free_tier: true
 spent_twd:
-  anthropic: 0.0
-  google_places: 0.0
+  anthropic: 120.831595
+  google_places: 129.92
   gemini: 0.0
 requests:
-  anthropic: 0
-  google_places: 0
+  anthropic: 14238
+  google_places: 1116
   gemini: 0
 cache_hits:
-  anthropic: 0
-  google_places: 0
+  anthropic: 9
+  google_places: 8413
   gemini: 0

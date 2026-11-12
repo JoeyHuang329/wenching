@@ -7,6 +7,10 @@ seed: 20261108
 crs_metric: "EPSG:3826"        # TWD97 / TM2 zone 121，單位公尺
 crs_storage: "EPSG:4326"       # 原始座標存 WGS84
 buffer_m: 300
+# 主範圍是沿界線道路「中心線」定義的，而 POI／文資座標是建物形心。外擴這個距離
+# 才能把面向界線道路的店家納入（界線道路對側的建物形心通常距中心線 >12 公尺）。
+# 預先登記的主規格 10 公尺；敏感性分析跑 0 與 15 公尺。
+main_inclusive_buffer_m: 10
 context_radius_m: 100
 kde_bandwidths_m: [150, 300]
 dedup_distance_m: 30
@@ -40,8 +44,10 @@ models:
   fallback_extraction: claude-sonnet-5-5   # 閘門一第二次失敗時才換
   agent: claude-sonnet-5-5
   rq3_draft: claude-sonnet-5-5
-  gemini_crosscheck: gemini-3.6-flash   # 以 AI Studio 顯示的免費方案模型名稱為準，請人工確認後改寫
+  gemini_crosscheck: gemini-flash-latest   # 以 AI Studio 顯示的免費方案模型名稱為準，請人工確認後改寫
   extraction_max_tokens: 1200
+  # 第一次輸出被截斷（stop_reason = max_tokens）的呼叫，用這個上限重跑一次；只影響那些呼叫，不改其他快取
+  extraction_max_tokens_retry: 1800
 
 # ---- T02 Places 普查 ----
 places:
@@ -145,6 +151,21 @@ heritage:
   include_temples: true
   # 百年廟宇清單：需人工確認（游采頻／彭郁媗）。座標待補時留空，程式會跳過
   temples_csv: data/raw/heritage/temples.csv
+  # 歷史環境密度需要的文資分類（提案書 6.5）。缺任一類，heritage.validate() 會要求停下來。
+  # 1.1 古蹟、1.2 歷史建築（文化部文資局分類代碼）
+  required_classify: ["1.1", "1.2"]
+  # 只保留這些縣市與行政區的文資（可以直接放全國的 JSON）。設成 null 代表不過濾。
+  # 行政區名稱在不同縣市會重複（基隆市也有中正區），所以 cities 一定要一起設。
+  cities: ["台北市", "臺北市"]
+  districts: ["大同區", "萬華區", "中山區", "中正區"]
+  # 「百年廟宇」＝創立於此年以前（2026 年起算滿百年）。改這個值要寫進 deviations.md
+  temple_founded_before: 1926
+  temple_coord_tolerance_m: 2000
+  heritage_coord_tolerance_m: 3000
+  # 距「主範圍＋緩衝區」超過這個距離的文資直接濾掉：行政區比研究範圍大得多，
+  # 中正區的紀州庵、萬華區的寶藏巖等離大稻埕數公里，在 300 公尺帶寬下貢獻為 0。
+  # 設成 null 代表不依距離過濾。
+  max_distance_m: 1500
 landmarks:
   # 霞海城隍廟（迪化街一段 61 號）。座標為近似值，需人工核對後把 verified 改成 true
   xiahai_temple: {lon: 121.50990, lat: 25.05588, verified: false}

@@ -5,7 +5,7 @@
   data/raw/osm/osm_raw.json               （Overpass 回應；沙盒或學校網路擋住時，由人到 overpass-turbo 下載）
 輸出：
   data/interim/poi_merged.parquet         （所有範圍內 POI，含 source、in_main、poi_id）
-  data/interim/dedup_ambiguous.csv        （模稜兩可的配對：給彭郁媗看，不自動合併）
+  data/interim/dedup_ambiguous.csv        （模稜兩可的配對：給隊友 A 看，不自動合併）
   data/interim/noncommercial_dropped.csv  （被濾掉的非商業地點，方便抽查）
   data/interim/poi_id_map.csv             （poi_id 對照，重跑時保持穩定）
 
@@ -314,6 +314,11 @@ def merge(places_df: pd.DataFrame, osm_elements: list[dict], decisions: pd.DataF
 
     places["source"] = "places"
     places["osm_id"] = None
+    # concat 會把「只有一邊有的欄位」填成 NaN（float），而 bool(NaN) 是 True，
+    # 下游用 `if osm_kind:` 判斷就會誤判。這裡先明確建成 object 欄並填 None。
+    for c in ("osm_kind", "osm_website", "osm_opening_hours", "osm_brand"):
+        if c not in places.columns:
+            places[c] = pd.Series([None] * len(places), index=places.index, dtype=object)
     if len(matches):
         mm = matches.drop_duplicates("place_id").set_index("place_id")["osm_id"]
         has = places["place_id"].isin(mm.index)
@@ -329,6 +334,10 @@ def merge(places_df: pd.DataFrame, osm_elements: list[dict], decisions: pd.DataF
     osm_only["business_status"] = "UNKNOWN_OSM"
     osm_only["website_uri"] = osm_only["osm_website"]
     osm_only["generic_type"] = False
+    for c in ("places_primary_type", "places_types", "formatted_address", "regular_opening_hours",
+              "user_rating_count", "rating", "price_level"):
+        if c not in osm_only.columns:
+            osm_only[c] = pd.Series([None] * len(osm_only), index=osm_only.index, dtype=object)
 
     allp = pd.concat([places, osm_only], ignore_index=True, sort=False)
     allp = gpd.GeoDataFrame(allp, geometry="geometry", crs=geo.WGS84)
@@ -348,6 +357,11 @@ def merge(places_df: pd.DataFrame, osm_elements: list[dict], decisions: pd.DataF
         if c not in allp.columns:
             allp[c] = None
     out = pd.DataFrame(allp[cols]).sort_values("poi_id").reset_index(drop=True)
+    # 寫進 parquet 之前把文字欄位的缺值統一成 None（object），避免讀回來變 NaN float
+    for c in ("osm_kind", "places_primary_type", "places_types", "formatted_address",
+              "regular_opening_hours", "osm_opening_hours", "website_uri", "price_level", "osm_id", "place_id"):
+        if c in out.columns:
+            out[c] = out[c].astype(object).where(out[c].notna(), None)
     stats = pd.DataFrame([{
         "places_in": len(places_df), "noncommercial_dropped": len(dropped), "osm_commercial": len(osm),
         "before_dedup": n_before, "auto_merged": len(matches), "ambiguous_pairs": len(amb),
@@ -379,7 +393,7 @@ def main(argv: list[str] | None = None) -> None:
     res["ambiguous"].to_csv(d / "dedup_ambiguous.csv", index=False, encoding="utf-8-sig")
     res["dropped"].to_csv(d / "noncommercial_dropped.csv", index=False, encoding="utf-8-sig")
     print(res["stats"].T.to_string(header=False))
-    print(f"模稜兩可清單（給彭郁媗）：{d / 'dedup_ambiguous.csv'}")
+    print(f"模稜兩可清單（給隊友 A）：{d / 'dedup_ambiguous.csv'}")
 
 
 if __name__ == "__main__":

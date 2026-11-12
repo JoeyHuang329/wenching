@@ -8,7 +8,7 @@
   data/interim/transit_*.geojson                  （python -m dadaocheng.transit）
 輸出：
   data/final/poi_master.parquet
-  data/interim/heritage_match.csv                 （給彭郁媗人工檢查）
+  data/interim/heritage_match.csv                 （給隊友 A 人工檢查）
   data/interim/blocks.geojson
   outputs/tables/t04_missing_report.csv
   outputs/figures/check_heritage.png、check_blocks.png、check_main_street.png
@@ -32,7 +32,7 @@ from shapely.geometry import LineString, MultiLineString, Point
 from shapely.ops import nearest_points, polygonize, unary_union
 
 from . import config, geo
-from .names import normalize_address, normalize_name
+from .names import as_text, normalize_address, normalize_name
 
 # ---------------------------------------------------------------------------
 # 營業時間
@@ -101,17 +101,38 @@ def add_hours(df: pd.DataFrame) -> pd.DataFrame:
 # Places 類別 → 業態大類（粗分類）
 # ---------------------------------------------------------------------------
 
+def parse_types(types_json) -> list[str]:
+    """Places 的 types 欄位。來源可能是 JSON 字串、list，或缺值。"""
+    v = types_json
+    if isinstance(v, (list, tuple, np.ndarray)):
+        return [as_text(t) for t in v if as_text(t)]
+    s = as_text(v)
+    if not s:
+        return []
+    if s.startswith("["):
+        try:
+            return [as_text(t) for t in json.loads(s) if as_text(t)]
+        except json.JSONDecodeError:
+            return []
+    return [t for t in (x.strip() for x in s.split(",")) if t]
+
+
 def places_category(primary: str | None, types_json: str | None, osm_kind: str | None = None) -> str:
+    """由 Places 類別（或 OSM 標籤）推 POI 的業態大類。
+
+    三個參數都可能是缺值：Places 來源的 POI 沒有 osm_kind，OSM 來源的沒有 primaryType。
+    """
     cmap: dict[str, list[str]] = config.settings()["places_category_map"]
     lookup = {t: cat for cat, ts in cmap.items() for t in ts}
+    primary = as_text(primary)
     if primary and primary in lookup:
         return lookup[primary]
-    types = json.loads(types_json) if isinstance(types_json, str) and types_json else []
-    for t in types:
+    for t in parse_types(types_json):
         if t in lookup:
             return lookup[t]
-    if osm_kind:
-        k, _, v = osm_kind.partition("=")
+    kind = as_text(osm_kind)
+    if kind:
+        k, _, v = kind.partition("=")
         if v in lookup:
             return lookup[v]
         if k == "shop":
@@ -131,8 +152,7 @@ def traditional_subtype(name: str | None) -> str | None:
 
 def likely_wenqing(primary: str | None, types_json: str | None) -> bool:
     lw = set(config.settings()["likely_wenqing_types"])
-    types = set(json.loads(types_json)) if isinstance(types_json, str) and types_json else set()
-    return bool((primary in lw) or (types & lw))
+    return bool((as_text(primary) in lw) or (set(parse_types(types_json)) & lw))
 
 
 # ---------------------------------------------------------------------------
@@ -140,59 +160,113 @@ def likely_wenqing(primary: str | None, types_json: str | None) -> bool:
 # ---------------------------------------------------------------------------
 
 def load_heritage(path: Path | None = None) -> pd.DataFrame:
-    path = path or (config.path("raw") / "heritage" / "heritage_list.csv")
-    if not path.exists():
-        raise FileNotFoundError(f"{path} 不存在。請依 待執行任務描述.md T04-H1 整理文資清單。")
-    h = pd.read_csv(path, dtype={"heritage_id": str}, encoding="utf-8-sig")
-    for c in ["lon", "lat"]:
-        if c not in h.columns:
-            h[c] = np.nan
-    h["addr_key"] = h["address"].apply(normalize_address)
-    return h
+    """保留舊介面：實際載入與驗證在 dadaocheng.heritage。"""
+    from .heritage import load_heritage as _load
+
+    return _load()
 
 
-def match_heritage(pois: gpd.GeoDataFrame, heritage: pd.DataFrame, buildings: gpd.GeoDataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """回傳 (heritage_located：每筆文資的定位結果, poi_matches：POI × 文資的配對)。"""
+def match_heritage(pois: gpd.GeoDataFrame, heritage: pd.DataFrame,
+                   buildings: gpd.GeoDataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """比對 POI 與文資，回傳 (heritage_located：每筆文資的定位結果, poi_matches：POI × 文資配對)。
+
+    判定（提案書 6.5 / 實作規劃 B T04）：
+      1. POI 落在該文資所在的建物輪廓內 → 算。
+      2. POI 與文資點位距離 ≤ match_distance_m → 算。
+      3. POI 的正規化地址與文資地址相同 → 算（沒有座標的文資只能靠這個）。
+
+    以空間索引向量化處理：文資 227 筆 × POI 4,000 筆用雙層迴圈要數分鐘，這裡是數秒。
+    """
     crs = geo.metric_crs()
     dmax = float(config.settings()["heritage"]["match_distance_m"])
-    P = pois.to_crs(crs)
-    poi_addr = pois["formatted_address"].apply(normalize_address) if "formatted_address" in pois else pd.Series("", index=pois.index)
-    B = buildings.to_crs(crs) if buildings is not None and len(buildings) else None
-    located, matches = [], []
-    for _, h in heritage.iterrows():
-        fp, pt, method = None, None, None
-        if pd.notna(h["lon"]) and pd.notna(h["lat"]):
-            pt = gpd.GeoSeries([Point(h["lon"], h["lat"])], crs=geo.WGS84).to_crs(crs).iloc[0]
-            method = "coord"
-            if B is not None:
-                hit = B[B.contains(pt)]
-                if len(hit):
-                    fp = hit.geometry.iloc[0]
-                    method = "coord+footprint"
-        elif h["addr_key"]:
-            same = poi_addr[poi_addr == h["addr_key"]]
-            if len(same):
-                pt = P.loc[same.index[0]].geometry
-                method = "address"
-                if B is not None:
-                    hit = B[B.contains(pt)]
-                    if len(hit):
-                        fp = hit.geometry.iloc[0]
-                        method = "address+footprint"
-        located.append({"heritage_id": h["heritage_id"], "name": h["name"], "type": h.get("type"),
-                        "method": method or "unlocated", "x": pt.x if pt is not None else np.nan,
-                        "y": pt.y if pt is not None else np.nan})
-        if pt is None:
-            continue
-        for idx, p in P.iterrows():
-            in_fp = fp is not None and fp.buffer(0.5).contains(p.geometry)
-            d = p.geometry.distance(pt)
-            addr_same = bool(h["addr_key"]) and poi_addr.get(idx, "") == h["addr_key"]
-            if in_fp or d <= dmax or addr_same:
-                matches.append({"poi_id": p["poi_id"], "poi_name": p["name"], "heritage_id": h["heritage_id"],
-                                "heritage_name": h["name"], "in_footprint": in_fp, "dist_m": round(d, 1),
-                                "address_match": addr_same, "human_check": ""})
-    return pd.DataFrame(located), pd.DataFrame(matches)
+    P = pois.to_crs(crs).reset_index(drop=True)
+    poi_addr = (pois["formatted_address"].apply(normalize_address).reset_index(drop=True)
+                if "formatted_address" in pois else pd.Series([""] * len(P)))
+    B = buildings.to_crs(crs).reset_index(drop=True) if buildings is not None and len(buildings) else None
+
+    H = heritage.reset_index(drop=True).copy()
+    has_xy = H["lon"].notna() & H["lat"].notna()
+    HX = gpd.GeoDataFrame(H[has_xy], geometry=gpd.points_from_xy(H.loc[has_xy, "lon"], H.loc[has_xy, "lat"]),
+                          crs=geo.WGS84).to_crs(crs).reset_index(drop=True)
+
+    # 每筆文資落在哪個建物輪廓內
+    fp_idx = pd.Series([pd.NA] * len(HX), dtype="object")
+    if B is not None and len(HX):
+        j = gpd.sjoin(HX[["geometry"]], B[["geometry"]], how="left", predicate="within")
+        j = j[~j.index.duplicated()]
+        fp_idx = j["index_right"]
+
+    located = []
+    for i, r in H.iterrows():
+        if has_xy.iloc[i]:
+            k = int(HX.index[HX["heritage_id"] == r["heritage_id"]][0]) if len(HX) else -1
+            fp = fp_idx.iloc[k] if k >= 0 else pd.NA
+            method = "coord+footprint" if pd.notna(fp) else "coord"
+            pt = HX.geometry.iloc[k]
+            located.append({"heritage_id": r["heritage_id"], "name": r["name"], "type": r.get("type"),
+                            "method": method, "x": pt.x, "y": pt.y})
+        else:
+            method = "address" if (r.get("addr_key") and (poi_addr == r["addr_key"]).any()) else "unlocated"
+            located.append({"heritage_id": r["heritage_id"], "name": r["name"], "type": r.get("type"),
+                            "method": method, "x": np.nan, "y": np.nan})
+    located = pd.DataFrame(located)
+
+    pairs: dict[tuple[str, str], dict] = {}
+
+    def add(pi: int, hi: int, in_fp: bool, dist: float | None, addr: bool) -> None:
+        pid = P.loc[pi, "poi_id"]
+        hid = H.loc[hi, "heritage_id"]
+        rec = pairs.setdefault((pid, hid), {"poi_id": pid, "poi_name": P.loc[pi, "name"], "heritage_id": hid,
+                                            "heritage_name": H.loc[hi, "name"], "heritage_type": H.loc[hi].get("type"),
+                                            "in_footprint": False, "dist_m": np.nan, "address_match": False,
+                                            "human_check": ""})
+        rec["in_footprint"] |= in_fp
+        rec["address_match"] |= addr
+        if dist is not None:
+            rec["dist_m"] = dist if pd.isna(rec["dist_m"]) else min(rec["dist_m"], dist)
+
+    hid_to_row = {h: i for i, h in enumerate(H["heritage_id"])}
+
+    # (2) 距離 ≤ dmax：以 POI 的緩衝圓和文資點位做空間接合
+    if len(HX) and len(P):
+        buf = gpd.GeoDataFrame({"pi": P.index}, geometry=P.geometry.buffer(dmax), crs=crs)
+        hit = gpd.sjoin(buf, HX[["heritage_id", "geometry"]], how="inner", predicate="intersects")
+        for _, row in hit.iterrows():
+            pi = int(row["pi"])
+            hi = hid_to_row[row["heritage_id"]]
+            d = float(P.geometry.iloc[pi].distance(HX.geometry.iloc[int(row["index_right"])]))
+            if d <= dmax:
+                add(pi, hi, False, round(d, 1), False)
+
+    # (1) 建物輪廓內：POI 與文資落在同一棟
+    if B is not None and len(HX):
+        fp_of_h = {HX.loc[k, "heritage_id"]: int(v) for k, v in fp_idx.items() if pd.notna(v)}
+        if fp_of_h:
+            fps = B.loc[sorted(set(fp_of_h.values())), ["geometry"]].copy()
+            fps["bidx"] = fps.index
+            inside = gpd.sjoin(P[["geometry"]], fps, how="inner", predicate="within")
+            by_b: dict[int, list[int]] = {}
+            for pi, row in inside.iterrows():
+                by_b.setdefault(int(row["bidx"]), []).append(int(pi))
+            for hid, bidx in fp_of_h.items():
+                for pi in by_b.get(bidx, []):
+                    add(pi, hid_to_row[hid], True, None, False)
+
+    # (3) 地址相同
+    addr_map: dict[str, list[int]] = {}
+    for pi, k in poi_addr.items():
+        if k:
+            addr_map.setdefault(k, []).append(int(pi))
+    for hi, r in H.iterrows():
+        k = r.get("addr_key")
+        if k:
+            for pi in addr_map.get(k, []):
+                add(pi, hi, False, None, True)
+
+    cols = ["poi_id", "poi_name", "heritage_id", "heritage_name", "heritage_type", "in_footprint", "dist_m",
+            "address_match", "human_check"]
+    matches = pd.DataFrame(list(pairs.values()), columns=cols)
+    return located, matches
 
 
 def kernel_density(px: np.ndarray, py: np.ndarray, hx: np.ndarray, hy: np.ndarray, bandwidth: float) -> np.ndarray:
@@ -216,10 +290,15 @@ _ROAD_NAME = re.compile(r"(路|街|大道)(.段)?$")
 _LANE_NAME = re.compile(r"(巷|弄)")
 
 
-def is_block_road(highway: str, name: str | None) -> bool:
-    """切街區用的道路：大路一定切；residential/unclassified/living_street 只在「路／街」且不是巷弄時切。"""
+def is_block_road(highway: str | None, name: str | None) -> bool:
+    """切街區用的道路：大路一定切；residential/unclassified/living_street 只在「路／街」且不是巷弄時切。
+
+    OSM 的 highway 與 name 都可能缺值（巷弄常常沒有名稱）。
+    """
     excl = set(config.settings()["streets"]["exclude_highway"])
-    if highway in excl:
+    highway = as_text(highway)
+    name = as_text(name)
+    if not highway or highway in excl:
         return False
     if highway in MAJOR_HIGHWAYS:
         return True
@@ -355,7 +434,7 @@ def build_poi_master(poi: pd.DataFrame, roads: gpd.GeoDataFrame, buildings: gpd.
     df["traditional_subtype"] = df["name"].apply(traditional_subtype)
     df["likely_wenqing"] = [likely_wenqing(a, b) for a, b in zip(df["places_primary_type"], df["places_types"])]
     pmap = s["price_level_ordinal"]
-    df["price_level_ord"] = df["price_level"].map(pmap)
+    df["price_level_ord"] = df["price_level"].map(lambda v: pmap.get(as_text(v)))
 
     # 分析單位：主範圍、營業中、Places 來源
     df["analysis_unit"] = df["in_main"] & (df["business_status"] == "OPERATIONAL")
@@ -473,16 +552,37 @@ def check_maps(res: dict, out_dir: Path) -> list[Path]:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--no-heritage", action="store_true", help="文資清單還沒好時先跑其他欄位（in_heritage 全為 False）")
+    ap.add_argument("--no-heritage", action="store_true",
+                    help="文資清單還沒好時先跑其他欄位（in_heritage 全為 False、heritage_kde 全為 0）")
+    ap.add_argument("--accept-warnings", action="store_true",
+                    help="已知文資資料不完整仍要往下跑（請同時在 docs/deviations.md 記錄）")
     args = ap.parse_args(argv)
+    from .heritage import load_heritage as load_h
+    from .heritage import load_temples, print_validation, validate
     from .t03_osm_merge import load_osm, osm_buildings, osm_roads
 
     poi = pd.read_parquet(config.path("interim") / "poi_merged.parquet")
     els = load_osm()
     roads, buildings = osm_roads(els), osm_buildings(els)
-    heritage = None if args.no_heritage else load_heritage()
-    tp = config.project_root() / config.settings()["heritage"]["temples_csv"]
-    temples = pd.read_csv(tp, encoding="utf-8-sig") if tp.exists() else None
+    print(f"OSM：道路 {len(roads)} 條、建物輪廓 {len(buildings)} 個")
+
+    heritage, temples, temples_all = None, None, pd.DataFrame()
+    if not args.no_heritage:
+        heritage = load_h()
+        temples, temples_all = load_temples()
+        v = validate(heritage, temples_all)
+        print()
+        n_stop = print_validation(v)
+        tables = config.path("tables"); tables.mkdir(parents=True, exist_ok=True)
+        v.to_csv(tables / "t04_heritage_validation.csv", index=False, encoding="utf-8-sig")
+        if n_stop and not args.accept_warnings:
+            print(f"\n有 {n_stop} 項「必須處理」。修好後重跑，"
+                  "或確認影響後加 --accept-warnings 繼續（並寫進 docs/deviations.md）。")
+            raise SystemExit(2)
+        if n_stop:
+            print(f"\n（已以 --accept-warnings 略過 {n_stop} 項警告，請記錄在 docs/deviations.md）")
+        print()
+
     res = build_poi_master(poi, roads, buildings, heritage, temples)
     df = res["poi_master"]
     out = config.path("final") / "poi_master.parquet"
@@ -499,19 +599,39 @@ def main(argv: list[str] | None = None) -> None:
     print(f"poi_master：{len(df)} 筆；分析單位（主範圍且營業中）：{len(au)}")
     if len(res["heritage_located"]):
         hl = res["heritage_located"]
-        rate = (hl["method"] != "unlocated").mean()
-        print(f"文資比對率（定位成功的文資比例）：{rate:.1%}（{(hl['method'] != 'unlocated').sum()}/{len(hl)}）")
-        if rate < 0.8:
-            print("⚠ 文資比對率低於八成：請停下來，由彭郁媗人工補比對（CLAUDE.md）。")
+        ok = (hl["method"] != "unlocated")
+        print(f"文資定位率：{ok.mean():.1%}（{int(ok.sum())}/{len(hl)}）"
+              f"｜含建物輪廓 {int((hl['method'] == 'coord+footprint').sum())} 筆")
+        if ok.mean() < 0.8:
+            print("■ 文資定位率低於八成：請停下來，由隊友 A 人工補比對（CLAUDE.md）。")
+        hm = res["heritage_match"]
+        print(f"文資配對：{len(hm)} 組（POI {hm['poi_id'].nunique() if len(hm) else 0} 家）"
+              f"｜輪廓內 {int(hm['in_footprint'].sum()) if len(hm) else 0}"
+              f"、距離內 {int(hm['dist_m'].notna().sum()) if len(hm) else 0}"
+              f"、地址相符 {int(hm['address_match'].sum()) if len(hm) else 0}")
     print(f"in_heritage 的分析單位 POI：{int(au['in_heritage'].sum())}")
+    for c in ("heritage_kde_150", "heritage_kde_300"):
+        if c in au:
+            print(f"{c}：中位數 {au[c].median():.1f}、最大 {au[c].max():.1f}（點／平方公里）")
     print("closes_before_19（分析單位）：")
     print(au["closes_before_19"].value_counts(dropna=False).to_string())
     print("hours_status：", au["hours_status"].value_counts().to_dict())
-    print(f"街區數：{df['block_id'].nunique()}；最小街區 POI 數：{res['blocks']['n_analysis_poi'].min()}")
-    print("缺失比例最高的欄位：")
-    print(mr.sort_values("missing_analysis_unit", ascending=False).head(10).to_string(index=False))
+    print(f"街區數：{df['block_id'].nunique()}；最小街區 POI 數：{res['blocks']['n_analysis_poi'].min()}"
+          f"；中位數 {res['blocks']['n_analysis_poi'].median():.0f}")
+    if df["block_id"].nunique() < 20:
+        print("▲ 街區數少於 20：H6 的群集標準誤會低估，請依 實作審閱筆記.md 1.1 改用 wild cluster bootstrap。")
+    print("業態大類（分析單位，依 Places 類別粗分）：")
+    print(au["places_category"].value_counts().to_string())
+    print(f"on_main_street：{int(au['on_main_street'].sum())} 家"
+          f"｜north_of_minsheng：{int(au['north_of_minsheng'].sum())} 家")
+    print("缺失比例最高的欄位（分析單位）：")
+    print(mr.sort_values("missing_analysis_unit", ascending=False).head(8).to_string(index=False))
     for p in check_maps(res, config.path("figures")):
         print("檢查地圖：", p)
+    print(f"\n下一步：T05 官網抓取（背景跑）→ T06 prompt。只需結構化資料的 H1／H5／H3 現在就可以跑：")
+    print("  python -m dadaocheng.t11_h1_hours")
+    print("  python -m dadaocheng.t12_h5_heritage")
+    print("  python -m dadaocheng.t13_h3_zoning")
 
 
 if __name__ == "__main__":

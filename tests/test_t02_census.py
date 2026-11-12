@@ -107,3 +107,43 @@ def test_priority_polygon_is_resolved_first():
     # 所有主範圍的格子都排在非主範圍之前
     first_non = flags.index(False)
     assert all(flags[:first_non]) and not any(flags[first_non:])
+
+
+def test_limit_marks_pending_and_keeps_results():
+    """請求上限用完：已查的結果保留、未查的格子標 pending、主範圍優先所以主範圍沒有 pending。"""
+    from dadaocheng.api_layer import RequestLimitExceeded
+
+    pts = fake_world()
+    base, calls = make_fetch(pts)
+    main = box(0, 0, 200, 200)
+    full = run_census(box(0, 0, 400, 400), make_fetch(pts)[0], 200, 25, priority_polygon=main)
+    n_main = sum(1 for c in full.cells if c["in_priority"])
+    budget = {"n": n_main + 5}
+
+    def limited(cell):
+        if budget["n"] <= 0:
+            raise RequestLimitExceeded("limit")
+        budget["n"] -= 1
+        return base(cell)
+
+    res = run_census(box(0, 0, 400, 400), limited, 200, 25, priority_polygon=main)
+    assert len(res.pending) > 0
+    assert not any(c["in_priority"] for c in res.pending)
+    assert len([c for c in res.cells if not c["pending"]]) == n_main + 5
+    df = to_dataframe(res)
+    assert len(df) > 0 and df["place_id"].is_unique
+
+
+def test_fixed_origin_keeps_cells_aligned():
+    """原點固定：同一個範圍結果與舊版相同；縮小或改邊界時，格子仍在同一張格網上（快取可沿用）。"""
+    big = box(3.3, 7.1, 812.9, 433.0)
+    old = initial_cells(big, 200)                       # 舊行為：原點＝外框左下角
+    org = (big.bounds[0], big.bounds[1])
+    new = initial_cells(big, 200, origin=org)
+    assert [c.center for c in old] == [c.center for c in new]
+    small = box(250.0, 100.0, 500.0, 300.0)
+    centers_big = {c.center for c in new}
+    sub = initial_cells(small, 200, origin=org)
+    assert sub and all(c.center in centers_big for c in sub)
+    wider = box(-300.0, -50.0, 900.0, 500.0)              # 邊界往外擴：舊格子仍是子集
+    assert centers_big <= {c.center for c in initial_cells(wider, 200, origin=org)}

@@ -51,6 +51,27 @@ def test_second_identical_call_hits_cache_and_costs_nothing(tmp_root):
     assert state["cache_hits"]["anthropic"] == 1
 
 
+def test_cached_returns_same_shape_as_call(tmp_root):
+    """cached() 必須和 call() 回傳同樣的東西，否則「先查快取再送出」的流程會拿到不同結構。"""
+    caller, _ = make_caller(tmp_root)
+    resp = caller.call({"q": 1}, send=lambda r: {"content": [{"text": "hi"}]}, estimate_cost=lambda r: 0.1)
+    assert caller.cached({"q": 1}) == resp
+    rec = caller.cached_record({"q": 1})
+    assert rec["response"] == resp and rec["cost_twd"] == pytest.approx(0.1) and "fetched_at" in rec
+    assert caller.cached({"q": 2}) is None
+
+
+def test_store_then_cached_roundtrip(tmp_root):
+    """批次介面寫入的結果，要能像 call() 的結果一樣讀回來，而且不會重複記帳。"""
+    caller, ledger = make_caller(tmp_root)
+    caller.store({"q": "batch"}, {"content": [{"text": "x"}]}, 0.25, extra={"run": 1})
+    assert caller.cached({"q": "batch"}, extra={"run": 1}) == {"content": [{"text": "x"}]}
+    assert caller.cached({"q": "batch"}, extra={"run": 0}) is None   # run 不同＝不同快取
+    assert ledger.spent("anthropic") == pytest.approx(0.25)
+    caller.store({"q": "batch"}, {"content": []}, 0.25, extra={"run": 1})
+    assert ledger.spent("anthropic") == pytest.approx(0.25)
+
+
 def test_actual_cost_overrides_estimate(tmp_root):
     caller, ledger = make_caller(tmp_root)
     caller.call({"q": 1}, send=lambda r: {"usage": 3}, estimate_cost=lambda r: 5.0, actual_cost=lambda req, resp: 0.25)
@@ -125,3 +146,38 @@ def test_env_and_data_are_gitignored():
         assert res.returncode == 0, f"{target} 沒有被 .gitignore 排除"
     res = subprocess.run(["git", "check-ignore", "-q", ".env.example"], cwd=REPO)
     assert res.returncode == 1, ".env.example 應該要能 commit"
+
+
+def test_save_survives_windows_file_lock(tmp_root, monkeypatch):
+    """Windows：budget.yaml 被其他程式短暫鎖住時，os.replace 會丟 PermissionError；應重試成功。"""
+    import os as _os
+    from dadaocheng import api_layer
+
+    real = _os.replace
+    fails = {"n": 3}
+
+    def flaky(a, b):
+        if fails["n"] > 0 and str(b).endswith("budget.yaml"):
+            fails["n"] -= 1
+            raise PermissionError(5, "存取被拒")
+        return real(a, b)
+
+    monkeypatch.setattr(api_layer.os, "replace", flaky)
+    monkeypatch.setattr(api_layer.time, "sleep", lambda s: None)
+    caller, ledger = make_caller(tmp_root)
+    caller.call({"q": "lock"}, send=lambda r: {"ok": 1}, estimate_cost=lambda r: 1.0)
+    assert Ledger(tmp_root / "config" / "budget.yaml").requests("anthropic") == 1
+    assert not list((tmp_root / "config").glob(".budget_*.yaml"))
+
+
+def test_save_falls_back_when_lock_persists(tmp_root, monkeypatch):
+    from dadaocheng import api_layer
+
+    real = api_layer.os.replace
+    monkeypatch.setattr(api_layer.os, "replace",
+                        lambda a, b: (_ for _ in ()).throw(PermissionError(5, "x")) if str(b).endswith("budget.yaml") else real(a, b))
+    monkeypatch.setattr(api_layer.time, "sleep", lambda s: None)
+    caller, ledger = make_caller(tmp_root)
+    caller.call({"q": "lock2"}, send=lambda r: {"ok": 1}, estimate_cost=lambda r: 1.0)
+    assert Ledger(tmp_root / "config" / "budget.yaml").requests("anthropic") == 1
+    assert not list((tmp_root / "config").glob(".budget_*.yaml"))

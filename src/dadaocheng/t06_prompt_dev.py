@@ -4,7 +4,7 @@
 - 系統指令＋欄位定義＋值域放前面（prompt caching），POI 名稱、Places 類別、文本放最後。
 - 結構化輸出，每個欄位都有「不明」；證據逐字引用。
 - 只依提供的文本判斷；name_only 只能判斷 category 與 is_chain（本專案另加 fine_type），其他一律「不明」。
-- 驗收：20 筆由黃旭寬與游采頻看過；證據片段有效率 ≥ 90%；打 tag prompt-frozen（人做）。
+- 驗收：20 筆由黃旭寬與隊友 B 看過；證據片段有效率 ≥ 90%；打 tag prompt-frozen（人做）。
 - 開發樣本與抽查樣本不能重疊：T07 抽樣時排除 dev_sample.csv。
 - 本模組**不讀** audit_sample.csv 或任何人工標註（規則 3）。
 
@@ -92,7 +92,7 @@ def evidence_valid_rate(res: pd.DataFrame) -> float:
 
 
 def review_markdown(res: pd.DataFrame, inputs: pd.DataFrame) -> str:
-    """給黃旭寬與游采頻看的審閱表：每筆列出輸入摘要、各欄位答案、證據與是否為子字串。"""
+    """給黃旭寬與隊友 B 看的審閱表：每筆列出輸入摘要、各欄位答案、證據與是否為子字串。"""
     lines = [f"# T06 開發樣本審閱（prompt 版本 {res['prompt_version'].iloc[0] if len(res) else ''}）", "",
              f"證據片段有效率：**{evidence_valid_rate(res):.1%}**（目標 ≥ 90%）", "",
              "請逐筆標記：答案錯誤的欄位、證據不支持答案的欄位、prompt 需要補的定義。", ""]

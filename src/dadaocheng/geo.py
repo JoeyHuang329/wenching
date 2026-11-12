@@ -37,8 +37,20 @@ def boundary_is_draft(key: str = "boundary_main") -> bool:
     return any(str(f.get("properties", {}).get("status", "")).upper().startswith("DRAFT") for f in feats)
 
 
-def main_polygon_metric():
-    return unary_union(read_boundary("boundary_main").to_crs(metric_crs()).geometry)
+def main_polygon_metric(inclusive: bool | None = None):
+    """主範圍（EPSG:3826）。
+
+    主範圍是用四條界線道路的「中心線」定義的，但 POI 與文資的座標是建物形心，
+    面向界線道路的店家因此會落在中心線外側數公尺。inclusive 會把多邊形外擴
+    main_inclusive_buffer_m（預設 10 公尺）把這些沿街店家納入；界線道路對側的
+    建物形心距中心線通常超過 12 公尺，不會被誤納。
+    設 inclusive=False 可取得未外擴的版本（敏感性分析用）。
+    """
+    poly = unary_union(read_boundary("boundary_main").to_crs(metric_crs()).geometry)
+    if inclusive is False:
+        return poly
+    b = float(config.settings().get("main_inclusive_buffer_m", 0) or 0)
+    return poly.buffer(b, join_style="mitre") if b > 0 else poly
 
 
 def study_polygon_metric():
