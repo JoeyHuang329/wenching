@@ -20,15 +20,14 @@ dependencies = [
   "anthropic>=0.70",
   "google-genai>=1.0",
   "matplotlib>=3.8",
-  "scipy>=1.17.1",
-  "statsmodels>=0.15.0",
-  "tabulate>=0.10.0",
-  "openpyxl>=3.1.5",
+  "scipy>=1.11",        # stats.py（Fisher、MH、t 分布）、t14
+  "statsmodels>=0.14",  # stats.py（Mantel–Haenszel）
+  "openpyxl>=3.1",      # t07 Excel 抽查表單、t10 讀回
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
-later = ["statsmodels", "scipy", "scikit-learn", "lightgbm", "ppi-python"]
+later = ["scikit-learn", "lightgbm", "ppi-python"]
 
 [build-system]
 requires = ["setuptools>=68"]
